@@ -1,3 +1,17 @@
+
+"""Dock panel and progress dialog for Layout Publisher.
+ 
+The panel lists all print layouts of the current QGIS project and offers two
+actions on the selected layouts:
+ 
+* **Update** - refresh every map item (and optionally the whole layout).
+* **Publish** - export the layouts as PDF or PNG into a default export
+  location, showing per-layout progress in a small dialog.
+ 
+The export folder and format are stored with ``QgsSettings`` so they persist
+across sessions and projects.
+"""
+
 import os
 import re
 
@@ -13,27 +27,28 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.utils import iface
 
+# Keys under which the export folder and format are stored in QgsSettings
 SETTINGS_DIR = "LayoutPublisher/export_dir"
 SETTINGS_FORMAT = "LayoutPublisher/export_format"
-# Keys used before the plugin was renamed (migrated on first start)
-OLD_SETTINGS_DIR = "UpdateLayoutMaps/export_dir"
-OLD_SETTINGS_FORMAT = "UpdateLayoutMaps/export_format"
 
-try:
-    LEVEL_CRITICAL = Qgis.MessageLevel.Critical
-except AttributeError:  # older QGIS
-    LEVEL_CRITICAL = Qgis.Critical
+LEVEL_CRITICAL = Qgis.MessageLevel.Critical
 
-COLOR_PENDING = "#8a97a6"
-COLOR_RUNNING = "#d08a00"
-COLOR_OK = "#2e8b57"
-COLOR_FAIL = "#c0392b"
+# Colours of the status marks in the progress dialog
+COLOR_PENDING = "#8a97a6"  # grey: waiting
+COLOR_RUNNING = "#d08a00"  # amber: currently exporting
+COLOR_OK = "#2e8b57"       # green: exported
+COLOR_FAIL = "#c0392b"     # red: failed
 
 
 class StatusLabel(QWidget):
     """Status text with a small x button. Hidden whenever the text is empty."""
 
     def __init__(self, parent=None):
+        """Build the label and close button; the widget starts hidden.
+ 
+        Args:
+            parent (QWidget, optional): Parent widget.
+        """
         super().__init__(parent)
         row = QHBoxLayout(self)
         row.setContentsMargins(0, 0, 0, 0)
@@ -52,17 +67,37 @@ class StatusLabel(QWidget):
         self.hide()
 
     def setText(self, text):
+        """Show ``text``, or hide the whole widget if it is empty.
+ 
+        Args:
+            text (str): The message to display.
+        """
         self.label.setText(text)
         self.setVisible(bool(text))
 
     def clear(self):
+        """Clear the message and hide the widget."""
         self.setText("")
 
 
 class PublishProgressDialog(QDialog):
-    """Shows one row per layout; a green check appears once it is exported."""
+    """Modal dialog showing the export progress, one row per layout.
+ 
+    Each row has a status mark: a grey dot while waiting, an amber ellipsis
+    while exporting, a green check once exported, or a red cross on failure.
+    The dialog cannot be closed while an export is running.
+    """
 
     def __init__(self, names, fmt, export_dir, parent=None):
+        """Build the dialog with one pending row per layout.
+ 
+        Args:
+            names (list[str]): Names of the layouts that will be exported.
+            fmt (str): Export format shown in the header ("PDF" or "PNG").
+            export_dir (str): Target folder, shown below the header.
+            parent (QWidget, optional): Parent widget, usually the QGIS
+                main window.
+        """
         super().__init__(parent)
         self.setWindowTitle("Publishing layouts")
         self.setModal(True)
@@ -86,6 +121,7 @@ class PublishProgressDialog(QDialog):
         self.progress.setValue(0)
         layout.addWidget(self.progress)
 
+        # Scrollable list of rows, so a long list of layouts still fits on the screen
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         inner = QWidget()
@@ -114,6 +150,14 @@ class PublishProgressDialog(QDialog):
         layout.addLayout(btn_row)
 
     def _set_mark(self, name, symbol, color, tooltip=""):
+        """Change the status mark of one row.
+ 
+        Args:
+            name (str): Layout name identifying the row.
+            symbol (str): Character to show as the mark.
+            color (str): CSS colour of the mark.
+            tooltip (str, optional): Tooltip for the row, e.g. an error text.
+        """
         mark, text = self._rows[name]
         mark.setText(symbol)
         mark.setStyleSheet(f"color: {color}; font-weight: bold;")
@@ -121,18 +165,27 @@ class PublishProgressDialog(QDialog):
         text.setToolTip(tooltip)
 
     def set_running(self, name):
+        """Mark a layout as currently being exported."""
         self._set_mark(name, "…", COLOR_RUNNING)
 
     def set_done(self, name):
+        """Mark a layout as exported successfully (green check)."""
         self._set_mark(name, "✓", COLOR_OK)
 
     def set_failed(self, name, message):
+        """Advance the progress bar by one finished layout."""
         self._set_mark(name, "✗", COLOR_FAIL, message)
 
     def advance(self):
         self.progress.setValue(self.progress.value() + 1)
 
     def finish(self, n_ok, n_failed):
+        """Show the summary and allow the dialog to be closed.
+ 
+        Args:
+            n_ok (int): Number of layouts exported successfully.
+            n_failed (int): Number of layouts that failed.
+        """
         self._running = False
         text = f"Done: {n_ok} exported"
         if n_failed:
@@ -142,28 +195,42 @@ class PublishProgressDialog(QDialog):
 
     # Don't allow closing while an export is still running
     def closeEvent(self, event):
+        """Ignore close requests (window X) while an export is running."""
         if self._running:
             event.ignore()
         else:
             super().closeEvent(event)
 
     def reject(self):
+        """Ignore Esc while an export is running; otherwise close normally."""
         if not self._running:
             super().reject()
 
 
 class LayoutPublisherDock(QDockWidget):
+    """Dockable panel to update and publish the project's print layouts.
+ 
+    The layout list stays in sync with the project: it is refreshed whenever
+    layouts are added, removed or renamed, or another project is opened.
+    """
+
     def __init__(self, parent=None):
+        """Build the panel, connect project signals and fill the layout list.
+ 
+        Args:
+            parent (QWidget, optional): Parent widget, usually the QGIS
+                main window.
+        """
         super().__init__("Layout Publisher", parent)
         self.setObjectName("LayoutPublisherDock")  # lets QGIS remember its position
         self.settings = QgsSettings()
-        self.migrate_old_settings()
-        self._publish_dialog = None
+        self._publish_dialog = None  # reference so the dialog isn't garbage-collected
 
         body = QWidget()
         layout = QVBoxLayout(body)
         layout.addWidget(QLabel("Select layouts:"))
 
+        # Multi-selection list; shared by the Update and Publish actions
         self.list_widget = QListWidget()
         self.list_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         layout.addWidget(self.list_widget)
@@ -197,6 +264,7 @@ class LayoutPublisherDock(QDockWidget):
         fmt_row.addWidget(QLabel("Format:"))
         self.format_combo = QComboBox()
         self.format_combo.addItems(["PDF", "PNG"])
+        # Restore the last used format, falling back to PDF
         saved_fmt = self.settings.value(SETTINGS_FORMAT, "PDF")
         idx = self.format_combo.findText(str(saved_fmt))
         self.format_combo.setCurrentIndex(idx if idx >= 0 else 0)
@@ -209,7 +277,7 @@ class LayoutPublisherDock(QDockWidget):
         publish_layout.addWidget(QLabel("Export location:"))
         loc_row = QHBoxLayout()
         self.dir_edit = QLineEdit()
-        self.dir_edit.setReadOnly(True)
+        self.dir_edit.setReadOnly(True)  # changed only via the folder dialog
         self.dir_edit.setPlaceholderText("Not set")
         loc_row.addWidget(self.dir_edit, 1)
         self.btn_dir = QPushButton("Set…")
@@ -238,12 +306,11 @@ class LayoutPublisherDock(QDockWidget):
 
         self.populate()
 
-    def migrate_old_settings(self):
-        for old, new in ((OLD_SETTINGS_DIR, SETTINGS_DIR), (OLD_SETTINGS_FORMAT, SETTINGS_FORMAT)):
-            if not self.settings.contains(new) and self.settings.contains(old):
-                self.settings.setValue(new, self.settings.value(old))
-
     def disconnect_signals(self):
+        """Disconnect the project signals that refresh the layout list.
+ 
+        Called by the plugin before the panel is deleted on unload.
+        """
         project = QgsProject.instance()
         manager = project.layoutManager()
         for sig in (manager.layoutAdded, manager.layoutRemoved, manager.layoutRenamed,
@@ -256,7 +323,11 @@ class LayoutPublisherDock(QDockWidget):
     # ---------- list handling ----------
 
     def populate(self, *args):
-        """Fill the list, keeping the current selection where possible."""
+        """Fill the list, keeping the current selection where possible.
+        
+        Connected to several project signals, which pass different
+        arguments, hence ``*args`` (ignored).
+        """
         previously_selected = {i.text() for i in self.list_widget.selectedItems()}
         self.list_widget.clear()
         manager = QgsProject.instance().layoutManager()
@@ -269,15 +340,18 @@ class LayoutPublisherDock(QDockWidget):
     # ---------- export location ----------
 
     def export_dir(self):
+        """Return the saved export folder, or an empty string if not set."""
         return str(self.settings.value(SETTINGS_DIR, "") or "")
 
     def refresh_dir_display(self):
+        """Show the saved export folder and label the button "Set…"/"Change…"."""
         path = self.export_dir()
         self.dir_edit.setText(path)
         self.dir_edit.setToolTip(path)
         self.btn_dir.setText("Change…" if path else "Set…")
 
     def choose_export_dir(self):
+        """Let the user pick the export folder and save it in the settings."""
         start = self.export_dir() or os.path.expanduser("~")
         path = QFileDialog.getExistingDirectory(self, "Select export location", start)
         if path:
@@ -288,12 +362,23 @@ class LayoutPublisherDock(QDockWidget):
     # ---------- messages ----------
 
     def show_error(self, text):
+        """Show an error in the panel's status line and the QGIS message bar.
+ 
+        Args:
+            text (str): The error message.
+        """
         self.status.setText(text)
         iface.messageBar().pushMessage("Layout Publisher", text, level=LEVEL_CRITICAL, duration=6)
 
     # ---------- actions ----------
 
     def update_maps(self):
+        """Refresh all map items in the selected layouts.
+ 
+        Optionally refreshes each whole layout as well (labels, legends,
+        etc.), depending on the checkbox. A summary, including any errors,
+        is shown in the status line.
+        """
         selected = self.list_widget.selectedItems()
         if not selected:
             self.status.setText("Please select at least one layout.")
@@ -321,9 +406,11 @@ class LayoutPublisherDock(QDockWidget):
                         lyt.refresh()
                     n_layouts += 1
                 except Exception as e:
+                    # Report the failure but keep going with the other layouts
                     errors.append(f"'{name}': {e}")
                 QApplication.processEvents()
         finally:
+            # Always restore the cursor, even if something unexpected fails
             QApplication.restoreOverrideCursor()
 
         msg = f"Updated {n_maps} map(s) in {n_layouts} layout(s)."
@@ -332,6 +419,14 @@ class LayoutPublisherDock(QDockWidget):
         self.status.setText(msg)
 
     def publish_layouts(self):
+        """Export the selected layouts to the export folder as PDF or PNG.
+ 
+        Shows an error if no export folder is set (or it no longer exists)
+        and nothing is exported. Otherwise a progress dialog is opened and
+        each layout is exported as ``<layout name>.<pdf|png>``; existing
+        files with the same name are overwritten. A summary, including any
+        errors, is shown in the status line afterwards.
+        """
         export_dir = self.export_dir()
         if not export_dir:
             self.show_error("Please set an export location.")
@@ -354,6 +449,8 @@ class LayoutPublisherDock(QDockWidget):
         dialog = PublishProgressDialog(names, fmt, export_dir, iface.mainWindow())
         self._publish_dialog = dialog  # keep a reference
         dialog.show()
+        # Each export blocks the main thread, so let Qt repaint the dialog
+        # between layouts to keep the marks and progress bar up to date.
         QApplication.processEvents()
 
         for name in names:
@@ -365,6 +462,7 @@ class LayoutPublisherDock(QDockWidget):
                 errors.append(f"'{name}' not found")
                 dialog.set_failed(name, "Layout not found")
             else:
+                # Replace characters that are not allowed in file names
                 safe_name = re.sub(r'[\\/:*?"<>|]', "_", name).strip() or "layout"
                 path = os.path.join(export_dir, f"{safe_name}.{fmt.lower()}")
                 try:
@@ -380,6 +478,7 @@ class LayoutPublisherDock(QDockWidget):
                         errors.append(f"'{name}': export failed")
                         dialog.set_failed(name, "Export failed")
                 except Exception as e:
+                    # Report the failure but keep going with the other layouts
                     errors.append(f"'{name}': {e}")
                     dialog.set_failed(name, str(e))
 

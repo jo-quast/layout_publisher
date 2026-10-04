@@ -10,3 +10,6 @@ tags=layout,print layout,map,refresh,export,pdf,png,publish
 experimental=False
 deprecated=False
 icon=icon.png
+homepage=https://github.com/jo-quast/layout_publisher
+repository=https://github.com/jo-quast/layout_publisher
+tracker=https://github.com/jo-quast/layout_publisher/issues
