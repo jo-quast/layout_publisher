@@ -1,0 +1,12 @@
+[general]
+name=Layout Publisher
+qgisMinimumVersion=3.30
+description=Dockable panel to refresh and publish (PDF/PNG) print layouts
+version=1.2.0
+author=Jonathan Quast
+email=jonathan.quast@gmail.com
+about=Dockable panel that lists all print layouts of the current project. Select one or more layouts to refresh their maps or publish them as PDF or PNG to a default export location.
+tags=layout,print layout,map,refresh,export,pdf,png,publish
+experimental=False
+deprecated=False
+icon=icon.png
