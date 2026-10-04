@@ -1,5 +1,5 @@
 """Plugin class that integrates Layout Publisher into the QGIS interface.
- 
+
 It creates the dockable panel, adds a toggle button to the toolbar and the
 Plugins menu, and cleans everything up again when the plugin is unloaded.
 """
@@ -14,7 +14,7 @@ from .dock import LayoutPublisherDock
 
 class LayoutPublisherPlugin:
     """Manages the lifecycle of the Layout Publisher plugin in QGIS."""
- 
+
     # Name of the entry in the Plugins menu ("&" marks the keyboard shortcut).
     MENU = "&Layout Publisher"
 
@@ -25,7 +25,7 @@ class LayoutPublisherPlugin:
 
     def initGui(self):
         """Create the dock panel and add its toggle action to QGIS.
- 
+
         Called by QGIS after the plugin has been loaded.
         """
         self.dock = LayoutPublisherDock(self.iface.mainWindow())
@@ -41,7 +41,7 @@ class LayoutPublisherPlugin:
 
     def unload(self):
         """Remove the menu entry, toolbar button and dock panel.
- 
+
         Called by QGIS when the plugin is disabled or QGIS shuts down.
         """
         if self.action is not None:

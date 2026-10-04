@@ -1,12 +1,13 @@
 """Layout Publisher - QGIS plugin entry point."""
 
+
 def classFactory(iface):
     """Create the plugin instance. Called by QGIS when the plugin is loaded.
- 
+
     Args:
         iface (QgsInterface): The QGIS interface, giving access to the main
             window, menus, toolbars and message bar.
- 
+
     Returns:
         LayoutPublisherPlugin: The plugin object managed by QGIS.
     """

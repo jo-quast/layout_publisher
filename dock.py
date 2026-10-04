@@ -1,12 +1,12 @@
 """Dock panel and progress dialog for Layout Publisher.
- 
+
 The panel lists all print layouts of the current QGIS project and offers two
 actions on the selected layouts:
- 
+
 * **Update** - refresh every map item (and optionally the whole layout).
 * **Publish** - export the layouts as PDF or PNG into a default export
   location, showing per-layout progress in a small dialog.
- 
+
 The export folder and format are stored with ``QgsSettings`` so they persist
 across sessions and projects.
 """
@@ -44,7 +44,7 @@ class StatusLabel(QWidget):
 
     def __init__(self, parent=None):
         """Build the label and close button; the widget starts hidden.
- 
+
         Args:
             parent (QWidget, optional): Parent widget.
         """
@@ -67,7 +67,7 @@ class StatusLabel(QWidget):
 
     def setText(self, text):
         """Show ``text``, or hide the whole widget if it is empty.
- 
+
         Args:
             text (str): The message to display.
         """
@@ -81,7 +81,7 @@ class StatusLabel(QWidget):
 
 class PublishProgressDialog(QDialog):
     """Modal dialog showing the export progress, one row per layout.
- 
+
     Each row has a status mark: a grey dot while waiting, an amber ellipsis
     while exporting, a green check once exported, or a red cross on failure.
     The dialog cannot be closed while an export is running.
@@ -89,7 +89,7 @@ class PublishProgressDialog(QDialog):
 
     def __init__(self, names, fmt, export_dir, parent=None):
         """Build the dialog with one pending row per layout.
- 
+
         Args:
             names (list[str]): Names of the layouts that will be exported.
             fmt (str): Export format shown in the header ("PDF" or "PNG").
@@ -150,7 +150,7 @@ class PublishProgressDialog(QDialog):
 
     def _set_mark(self, name, symbol, color, tooltip=""):
         """Change the status mark of one row.
- 
+
         Args:
             name (str): Layout name identifying the row.
             symbol (str): Character to show as the mark.
@@ -180,7 +180,7 @@ class PublishProgressDialog(QDialog):
 
     def finish(self, n_ok, n_failed):
         """Show the summary and allow the dialog to be closed.
- 
+
         Args:
             n_ok (int): Number of layouts exported successfully.
             n_failed (int): Number of layouts that failed.
@@ -208,14 +208,14 @@ class PublishProgressDialog(QDialog):
 
 class LayoutPublisherDock(QDockWidget):
     """Dockable panel to update and publish the project's print layouts.
- 
+
     The layout list stays in sync with the project: it is refreshed whenever
     layouts are added, removed or renamed, or another project is opened.
     """
 
     def __init__(self, parent=None):
         """Build the panel, connect project signals and fill the layout list.
- 
+
         Args:
             parent (QWidget, optional): Parent widget, usually the QGIS
                 main window.
@@ -311,7 +311,7 @@ class LayoutPublisherDock(QDockWidget):
 
     def disconnect_signals(self):
         """Disconnect the project signals that refresh the layout list.
- 
+
         Called by the plugin before the panel is deleted on unload.
         """
         project = QgsProject.instance()
@@ -327,14 +327,14 @@ class LayoutPublisherDock(QDockWidget):
 
     def populate(self, *args):
         """Fill the list, keeping the current selection where possible.
-        
+
         Connected to several project signals, which pass different
         arguments, hence ``*args`` (ignored).
         """
         previously_selected = {i.text() for i in self.list_widget.selectedItems()}
         self.list_widget.clear()
         manager = QgsProject.instance().layoutManager()
-        for lyt in sorted(manager.layouts(), key=lambda l: l.name().lower()):
+        for lyt in sorted(manager.layouts(), key=lambda lay: lay.name().lower()):
             item = QListWidgetItem(lyt.name())
             self.list_widget.addItem(item)
             if lyt.name() in previously_selected:
@@ -366,7 +366,7 @@ class LayoutPublisherDock(QDockWidget):
 
     def show_error(self, text):
         """Show an error in the panel's status line and the QGIS message bar.
- 
+
         Args:
             text (str): The error message.
         """
@@ -377,7 +377,7 @@ class LayoutPublisherDock(QDockWidget):
 
     def update_maps(self):
         """Refresh all map items in the selected layouts.
- 
+
         Optionally refreshes each whole layout as well (labels, legends,
         etc.), depending on the checkbox. A summary, including any errors,
         is shown in the status line.
@@ -423,7 +423,7 @@ class LayoutPublisherDock(QDockWidget):
 
     def publish_layouts(self):
         """Export the selected layouts to the export folder as PDF or PNG.
- 
+
         Shows an error if no export folder is set (or it no longer exists)
         and nothing is exported. Otherwise a progress dialog is opened and
         each layout is exported as ``<layout name>.<pdf|png>``; existing
