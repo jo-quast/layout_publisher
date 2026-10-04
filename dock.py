@@ -1,4 +1,3 @@
-
 """Dock panel and progress dialog for Layout Publisher.
  
 The panel lists all print layouts of the current QGIS project and offers two
@@ -248,7 +247,11 @@ class LayoutPublisherDock(QDockWidget):
         # --- Update group ---
         update_box = QGroupBox("Update")
         update_layout = QVBoxLayout(update_box)
-        self.chk_layout_refresh = QCheckBox("Also refresh whole layout")
+        self.chk_layout_refresh = QCheckBox("Also update legends, labels and other items")
+        self.chk_layout_refresh.setToolTip(
+            "After refreshing the maps, also refresh the rest of the layouts: "
+            "legends, scale bars, labels with dynamic text and attribute tables."
+        )
         self.chk_layout_refresh.setChecked(True)
         update_layout.addWidget(self.chk_layout_refresh)
         btn_update = QPushButton("Update maps")
@@ -470,7 +473,9 @@ class LayoutPublisherDock(QDockWidget):
                     if fmt == "PDF":
                         result = exporter.exportToPdf(path, QgsLayoutExporter.PdfExportSettings())
                     else:
-                        result = exporter.exportToImage(path, QgsLayoutExporter.ImageExportSettings())
+                        result = exporter.exportToImage(
+                            path, QgsLayoutExporter.ImageExportSettings()
+                        )
                     if result == QgsLayoutExporter.ExportResult.Success:
                         n_ok += 1
                         dialog.set_done(name)
