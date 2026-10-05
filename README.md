@@ -32,24 +32,31 @@ refresh their maps or export them as PDF or PNG into a folder of your choice.
 
 ## Installation
 
-**From the QGIS Plugin Manager** (once published in the official repository):
+**From the QGIS Plugin Manager**:
 
 1. In QGIS, open **Plugins → Manage and Install Plugins…**
 2. Search for **Layout Publisher** and click **Install Plugin**.
 
 **From a ZIP file:**
 
-1. Download the plugin as a ZIP file. The ZIP must contain a single top-level
-   folder named `layout_publisher`.
+1. Download the repository as a ZIP file from GitHub or from
+   https://plugins.qgis.org/plugins/layout_publisher/. The ZIP must contain a
+   single top-level folder named `layout_publisher`.
 2. In QGIS, open **Plugins → Manage and Install Plugins… → Install from ZIP**
    and select the file.
 
-On macOS, don't create the ZIP with Finder's "Compress" command. It adds a
-`__MACOSX` folder that QGIS tries to load as a plugin. Create it from the
-terminal instead:
+To manually zip the plugin folder on macOS, don't create the ZIP with Finder's
+"Compress" command. It adds a `__MACOSX` folder that QGIS tries to load as a plugin.
+Create it from the terminal instead:
 
 ```bash
 zip -r layout_publisher.zip layout_publisher -x "*.DS_Store" -x "__MACOSX/*"
+```
+
+or, if you cloned the git repository:
+
+```bash
+git archive --prefix=layout_publisher/ -o layout_publisher.zip HEAD
 ```
 
 ## Usage
