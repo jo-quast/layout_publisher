@@ -24,6 +24,7 @@ refresh their maps or export them as PDF or PNG into a folder of your choice.
   that failed
 - A clear error ("Please set an export location.") if you try to publish
   before choosing a folder
+- **Rename:** Change the name of individual layouts directly from the panel
 
 ## Requirements
 
@@ -136,6 +137,7 @@ These are ideas, not promises, and they are in no particular order:
 - Support for QGIS reports
 - Qt6 / QGIS 4 compatibility and testing on Windows and Linux
 - i18n Translations
+- Rename several layouts at once (for example with a prefix/suffix or find/replace)
 
 Suggestions are welcome. Open an issue and describe how you'd use it.
 

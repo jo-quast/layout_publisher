@@ -22,7 +22,7 @@ from qgis.PyQt.QtWidgets import (
     QDockWidget, QWidget, QVBoxLayout, QHBoxLayout, QListWidget,
     QListWidgetItem, QPushButton, QLabel, QAbstractItemView, QCheckBox,
     QApplication, QGroupBox, QComboBox, QLineEdit, QFileDialog, QToolButton,
-    QDialog, QProgressBar, QScrollArea
+    QDialog, QProgressBar, QScrollArea, QInputDialog
 )
 from qgis.utils import iface
 
@@ -243,7 +243,14 @@ class LayoutPublisherDock(QDockWidget):
         btn_none.clicked.connect(self.list_widget.clearSelection)
         sel_row.addWidget(btn_all)
         sel_row.addWidget(btn_none)
+
+        self.btn_rename = QPushButton("Rename…")
+        self.btn_rename.setToolTip("Rename the selected layout (select exactly one)")
+        self.btn_rename.setEnabled(False)  # only enabled when exactly one layout is selected
+        self.btn_rename.clicked.connect(self.rename_layout)
+        self.list_widget.itemSelectionChanged.connect(self.update_rename_button)
         sel_row.addStretch()
+        sel_row.addWidget(self.btn_rename)
         layout.addLayout(sel_row)
 
         # --- Update group ---
@@ -358,6 +365,66 @@ class LayoutPublisherDock(QDockWidget):
             self.show_error(f"Layout '{name}' not found.")
             return
         iface.openLayoutDesigner(lyt)
+
+    def update_rename_button(self):
+        """Enable the Rename button only when exactly one layout is selected."""
+        self.btn_rename.setEnabled(len(self.list_widget.selectedItems()) == 1)
+
+    def select_layout(self, name):
+        """Select and scroll to the list entry with the given layout name.
+
+        Args:
+            name (str): Name of the layout to select. Does nothing if no
+                entry has this name.
+        """
+        for i in range(self.list_widget.count()):
+            item = self.list_widget.item(i)
+            if item.text() == name:
+                self.list_widget.setCurrentItem(item)
+                self.list_widget.scrollToItem(item)
+                break
+
+    def rename_layout(self):
+        """Rename the selected layout using a small input dialog.
+
+        Exactly one layout must be selected. The new name must not be empty
+        or already used by another layout, because QGIS requires unique
+        layout names.
+        """
+        selected = self.list_widget.selectedItems()
+        if len(selected) != 1:
+            self.status.setText("Please select exactly one layout to rename.")
+            return
+
+        old_name = selected[0].text()
+        manager = QgsProject.instance().layoutManager()
+        lyt = manager.layoutByName(old_name)
+        if lyt is None:
+            self.show_error(f"Layout '{old_name}' not found.")
+            return
+
+        new_name, ok = QInputDialog.getText(
+            self, "Rename layout", "New name:", text=old_name
+        )
+        if not ok:
+            return  # cancelled
+        new_name = new_name.strip()
+        if new_name == old_name:
+            return  # unchanged
+        if not new_name:
+            self.show_error("The layout name cannot be empty.")
+            return
+        if manager.layoutByName(new_name) is not None:
+            self.show_error(f"A layout named '{new_name}' already exists.")
+            return
+
+        lyt.setName(new_name)
+        # Make QGIS ask to save the project when closing
+        QgsProject.instance().setDirty(True)
+        # The manager's layoutRenamed signal has already refreshed the list,
+        # but the old name is no longer selected, so select the new one.
+        self.select_layout(new_name)
+        self.status.setText(f"Renamed '{old_name}' to '{new_name}'.")
 
     # ---------- export location ----------
 
