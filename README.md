@@ -56,7 +56,8 @@ zip -r layout_publisher.zip layout_publisher -x "*.DS_Store" -x "__MACOSX/*"
 
 1. Open the panel with the Layout Publisher button in the toolbar, or via
    **Plugins → Layout Publisher**. Use the same button to hide it again.
-2. Select one or more layouts in the list (Ctrl/Cmd-click or Shift-click, or
+2. Double-click a layout in the list to open it in the layout designer.
+   Select one or more layouts in the list (Ctrl/Cmd-click or Shift-click, or
    use **All**).
 
 ### Updating maps

@@ -12,8 +12,10 @@ icon=icon.png
 homepage=https://github.com/jo-quast/layout_publisher
 repository=https://github.com/jo-quast/layout_publisher
 tracker=https://github.com/jo-quast/layout_publisher/issues
-version=1.0.0
-changelog=1.0.0
+version=1.1.0
+changelog=1.1.0
+    - Double-click a layout in the list to open it in the layout designer
+    1.0.0
     - Initial release
     - Dockable panel listing all print layouts of the project
     - Refresh only map items or all items in selected layouts

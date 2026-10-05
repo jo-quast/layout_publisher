@@ -227,11 +227,13 @@ class LayoutPublisherDock(QDockWidget):
 
         body = QWidget()
         layout = QVBoxLayout(body)
-        layout.addWidget(QLabel("Select layouts:"))
+        layout.addWidget(QLabel("Select layouts (double-click to open layout designer):"))
 
         # Multi-selection list; shared by the Update and Publish actions
         self.list_widget = QListWidget()
         self.list_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.list_widget.itemDoubleClicked.connect(self.open_layout)
+        self.list_widget.setToolTip("Double-click a layout to open it in the layout designer")
         layout.addWidget(self.list_widget)
 
         sel_row = QHBoxLayout()
@@ -339,6 +341,23 @@ class LayoutPublisherDock(QDockWidget):
             self.list_widget.addItem(item)
             if lyt.name() in previously_selected:
                 item.setSelected(True)
+
+    def open_layout(self, list_item):
+        """Open the layout of ``list_item`` in the layout designer.
+
+        Connected to a double-click in the layout list. If the layout is
+        already open, QGIS brings its designer window to the front instead of
+        opening a second one.
+
+        Args:
+            list_item (QListWidgetItem): The item that was double-clicked.
+        """
+        name = list_item.text()
+        lyt = QgsProject.instance().layoutManager().layoutByName(name)
+        if lyt is None:
+            self.show_error(f"Layout '{name}' not found.")
+            return
+        iface.openLayoutDesigner(lyt)
 
     # ---------- export location ----------
 
