@@ -172,10 +172,11 @@ class PublishProgressDialog(QDialog):
         self._set_mark(name, "✓", COLOR_OK)
 
     def set_failed(self, name, message):
-        """Advance the progress bar by one finished layout."""
+        """Mark a layout as failed (red cross), with the error as tooltip."""
         self._set_mark(name, "✗", COLOR_FAIL, message)
 
     def advance(self):
+        """Advance the progress bar by one finished layout."""
         self.progress.setValue(self.progress.value() + 1)
 
     def finish(self, n_ok, n_failed):
