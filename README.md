@@ -50,7 +50,7 @@ On macOS, don't create the ZIP with Finder's "Compress" command. It adds a
 terminal instead:
 
 ```bash
-zip -r layout_publisher.zip layout_publisher -x "*.DS_Store" -x "__MACOSX/*" -x "*/CLAUDE.md"
+zip -r layout_publisher.zip layout_publisher -x "*.DS_Store" -x "__MACOSX/*" -x "*/CLAUDE.md" -x "*/pyproject.toml"
 ```
 
 ## Usage
