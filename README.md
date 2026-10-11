@@ -15,15 +15,14 @@ refresh their maps or export them as PDF or PNG into a folder of your choice.
 - Dockable panel listing all print layouts of the current project, kept in sync
   when layouts are added, renamed or removed, or another project is opened
 - Multi-selection, plus **All** / **None** buttons
-- **Update:** refresh every map item in the selected layouts, optionally the
-  rest of each layout too (legends, labels, scale bars, ...)
+- **Refresh:** refresh the map items, the other items (legends, labels, scale
+  bars, tables, ...) or both in the selected layouts
 - **Publish:** export the selected layouts as **PDF** or **PNG**
 - A default **export location** that is remembered between sessions
 - A progress window while publishing, with a green check next to every
   layout that was exported and a red cross (with the error as tooltip) for any
   that failed
-- A clear error ("Please set an export location.") if you try to publish
-  before choosing a folder
+
 - **Rename:** Change the name of individual layouts directly from the panel
 
 ## Requirements
@@ -61,16 +60,19 @@ zip -r layout_publisher.zip layout_publisher -x "*.DS_Store" -x "__MACOSX/*" -x 
    Select one or more layouts in the list (Ctrl/Cmd-click or Shift-click, or
    use **All**).
 
-### Updating maps
+### Refreshing layouts
 
-3. Optionally tick **Also update legends, labels and other items** to refresh
-   the whole layout and not only its map items.
-4. Click **Update maps**. A summary appears below the panel, for example
-   *"Updated 6 map(s) in 3 layout(s)."*
+3. Choose what to refresh: **Maps**, **Other items** (legends, labels, scale
+   bars, tables, ...) or both. Refreshing maps can take a while for large
+   layouts; the other items are quick. The **Refresh** button is only enabled
+   when at least one layout is selected and at least one option is ticked.
+4. Click **Refresh**. A summary appears below the panel, for example
+   *"Refreshed 6 map(s) and 14 other item(s) in 3 layout(s)."*
 
-"Update" re-renders the maps with the current state of the project, for
-example after you changed layer styles or data. It does **not** change a map's
-extent, scale or layer set.
+"Refresh" re-renders the items with the current state of the project, for
+example after you changed layer styles, data or a map theme: a map that follows
+a map theme shows the theme’s current layers. It does not change any item’s
+settings, such as a map’s extent, scale, locked layers or the theme it follows.
 
 ### Publishing layouts
 
@@ -107,8 +109,9 @@ aware of the following:
   can briefly seem unresponsive while a large layout is rendered. The progress
   window only updates between layouts, and it can't be closed until the
   export has finished.
-- **"Update" only refreshes.** It doesn't sync map extents with the main map
-  canvas, and it doesn't change map scale, layers or themes.
+- **Refresh doesn’t change map settings.** Maps are redrawn as they are set up
+  in the layout designer. Their extent isn’t synced with the main map canvas, 
+  and their scale, locked layers and followed theme stay as they are.
 - **Print layouts only.** QGIS *reports* are not supported. If your project
   contains reports they may appear in the list and will give an error when
   used.

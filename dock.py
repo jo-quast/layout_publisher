@@ -3,7 +3,7 @@
 The panel lists all print layouts of the current QGIS project and offers two
 actions on the selected layouts:
 
-* **Update** - refresh every map item (and optionally the whole layout).
+* **Refresh** - refresh the map items, the other items, or both.
 * **Publish** - export the layouts as PDF or PNG into a default export
   location, showing per-layout progress in a small dialog.
 
@@ -14,7 +14,16 @@ across sessions and projects.
 import os
 import re
 
-from qgis.core import Qgis, QgsLayoutExporter, QgsLayoutItemMap, QgsProject, QgsSettings
+from qgis.core import (
+    Qgis,
+    QgsLayoutExporter,
+    QgsLayoutFrame,
+    QgsLayoutItem,
+    QgsLayoutItemMap,
+    QgsLayoutItemPage,
+    QgsProject,
+    QgsSettings,
+)
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import (
     QAbstractItemView,
@@ -123,7 +132,7 @@ class StatusLabel(QWidget):
 
 
 class LayoutPublisherDock(QDockWidget):
-    """Dockable panel to update and publish the project's print layouts.
+    """Dockable panel to refresh and publish the project's print layouts.
 
     The layout list stays in sync with the project: it is refreshed whenever
     layouts are added, removed or renamed, or another project is opened.
@@ -146,7 +155,7 @@ class LayoutPublisherDock(QDockWidget):
         # The list must be built first: the selection row connects to it
         self._build_layout_list(layout)
         layout.addLayout(self._build_selection_row())
-        layout.addWidget(self._build_update_group())
+        layout.addWidget(self._build_refresh_group())
         layout.addWidget(self._build_publish_group())
         self.status = StatusLabel()
         layout.addWidget(self.status)
@@ -168,7 +177,7 @@ class LayoutPublisherDock(QDockWidget):
         self.hint_label.setWordWrap(True)
         layout.addWidget(self.hint_label)
 
-        # Multi-selection list; shared by the Update and Publish actions
+        # Multi-selection list; shared by the Refresh and Publish actions
         self.list_widget = QListWidget()
         self.list_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.list_widget.itemDoubleClicked.connect(self.open_layout)
@@ -201,28 +210,41 @@ class LayoutPublisherDock(QDockWidget):
         self.btn_rename.setEnabled(False)  # only enabled when exactly one layout is selected
         self.btn_rename.clicked.connect(self.rename_layout)
         self.list_widget.itemSelectionChanged.connect(self.update_rename_button)
+        self.list_widget.itemSelectionChanged.connect(self.update_refresh_button)
         row.addStretch()
         row.addWidget(self.btn_rename)
         return row
 
-    def _build_update_group(self):
-        """Create the Update group: the refresh option and the Update button.
+    def _build_refresh_group(self):
+        """Create the Refresh group: the Maps / Other items options and the Refresh button.
 
         Returns:
             QGroupBox: The group box.
         """
-        box, box_layout = make_group("Update")
-        self.chk_layout_refresh = QCheckBox("Also update legends, labels and other items")
-        self.chk_layout_refresh.setToolTip(
-            "After refreshing the maps, also refresh the rest of the layouts: "
-            "legends, scale bars, labels with dynamic text and attribute tables."
-        )
-        self.chk_layout_refresh.setChecked(True)
-        box_layout.addWidget(self.chk_layout_refresh)
+        box, box_layout = make_group("Refresh")
 
-        btn_update = QPushButton("Update maps")
-        btn_update.clicked.connect(self.update_maps)
-        box_layout.addWidget(btn_update)
+        self.chk_refresh_maps = QCheckBox("Maps")
+        self.chk_refresh_maps.setToolTip(
+            "Refresh all map items in the selected layouts. This might take a bit longer."
+        )
+        self.chk_refresh_maps.setChecked(True)
+        self.chk_refresh_maps.toggled.connect(self.update_refresh_button)
+
+        self.chk_refresh_other = QCheckBox("Other items (legends, labels…)")
+        self.chk_refresh_other.setToolTip(
+            "Refresh all other items in the selected layouts, like legends, labels, scale bars, "
+            "tables…. This should be quick."
+        )
+        self.chk_refresh_other.setChecked(True)
+        self.chk_refresh_other.toggled.connect(self.update_refresh_button)
+
+        box_layout.addWidget(self.chk_refresh_maps)
+        box_layout.addWidget(self.chk_refresh_other)
+
+        self.btn_refresh = QPushButton("Refresh")
+        self.btn_refresh.clicked.connect(self.refresh_layout_items)
+        self.btn_refresh.setEnabled(False)  # enabled by update_refresh_button
+        box_layout.addWidget(self.btn_refresh)
         return box
 
     def _build_publish_group(self):
@@ -365,6 +387,17 @@ class LayoutPublisherDock(QDockWidget):
         """Enable the Rename button only when exactly one layout is selected."""
         self.btn_rename.setEnabled(len(self.list_widget.selectedItems()) == 1)
 
+    def update_refresh_button(self):
+        """Enable the Refresh button only if a layout is selected and an option is checked.
+
+        Connected to the list's selection and to both refresh checkboxes; ``toggled``
+        passes the new state, which is ignored here.
+        """
+        is_enabled = bool(self.list_widget.selectedItems()) and (
+            self.chk_refresh_maps.isChecked() or self.chk_refresh_other.isChecked()
+        )
+        self.btn_refresh.setEnabled(is_enabled)
+
     def select_layout(self, name):
         """Select and scroll to the list entry with the given layout name.
 
@@ -454,12 +487,14 @@ class LayoutPublisherDock(QDockWidget):
 
     # ---------- actions ----------
 
-    def update_maps(self):
-        """Refresh all map items in the selected layouts.
+    def refresh_layout_items(self):
+        """Refresh the items of the selected layouts.
 
-        Optionally refreshes each whole layout as well (labels, legends,
-        etc.), depending on the checkbox. A summary, including any errors,
-        is shown in the status line.
+        Depending on the checkboxes, refreshes the map items, all other items
+        (legends, labels, scale bars, tables, ...) or both. Pages and the frames
+        of tables/HTML items are skipped; tables and HTML items are refreshed
+        once via ``multiFrames()``. A summary, including any errors, is shown
+        in the status line.
         """
         selected = self.list_widget.selectedItems()
         if not selected:
@@ -467,8 +502,11 @@ class LayoutPublisherDock(QDockWidget):
             return
 
         manager = QgsProject.instance().layoutManager()
+        maps_checked = self.chk_refresh_maps.isChecked()
+        others_checked = self.chk_refresh_other.isChecked()
         n_layouts = 0
         n_maps = 0
+        n_others = 0
         errors = []
 
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
@@ -481,11 +519,23 @@ class LayoutPublisherDock(QDockWidget):
                     continue
                 try:
                     for item in lyt.items():
+                        # Skip Qt helper graphics, pages and table/HTML frames (tables are refreshed
+                        # via multiFrames)
+                        if not isinstance(item, QgsLayoutItem) or isinstance(
+                            item, (QgsLayoutItemPage, QgsLayoutFrame)
+                        ):
+                            continue
                         if isinstance(item, QgsLayoutItemMap):
+                            if maps_checked:
+                                item.refresh()
+                                n_maps += 1
+                        elif others_checked:
                             item.refresh()
-                            n_maps += 1
-                    if self.chk_layout_refresh.isChecked():
-                        lyt.refresh()
+                            n_others += 1
+                    if others_checked:
+                        for item in lyt.multiFrames():
+                            item.refresh()
+                            n_others += 1
                     n_layouts += 1
                 except Exception as e:
                     # Report the failure but keep going with the other layouts
@@ -495,7 +545,12 @@ class LayoutPublisherDock(QDockWidget):
             # Always restore the cursor, even if something unexpected fails
             QApplication.restoreOverrideCursor()
 
-        msg = f"Updated {n_maps} map(s) in {n_layouts} layout(s)."
+        msg_parts = []
+        if maps_checked:
+            msg_parts.append(f"{n_maps} map(s)")
+        if others_checked:
+            msg_parts.append(f"{n_others} other item(s)")
+        msg = f"Refreshed {' and '.join(msg_parts)} in {n_layouts} layout(s)."
         if errors:
             msg += "\nErrors: " + "; ".join(errors)
         self.status.setText(msg)
