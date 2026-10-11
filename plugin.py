@@ -19,6 +19,12 @@ class LayoutPublisherPlugin:
     MENU = "&Layout Publisher"
 
     def __init__(self, iface):
+        """Store the QGIS interface; the panel is created later in ``initGui``.
+
+        Args:
+            iface (QgsInterface): The QGIS interface, giving access to the main
+                window, menus, toolbars and message bar.
+        """
         self.iface = iface
         self.dock = None
         self.action = None
@@ -33,7 +39,7 @@ class LayoutPublisherPlugin:
 
         # The dock's built-in toggle action shows/hides the panel
         self.action = self.dock.toggleViewAction()
-        self.action.setText("Layout Publisher panel")
+        self.action.setText("Layout Publisher")
         icon_path = os.path.join(os.path.dirname(__file__), "icon.svg")
         self.action.setIcon(QIcon(icon_path))
         self.iface.addPluginToMenu(self.MENU, self.action)
