@@ -68,6 +68,20 @@ def project_in_use(qgs_project):
     return bool(qgs_project.fileName()) or qgs_project.isDirty()
 
 
+def make_group(title):
+    """Create a group box with a vertical layout.
+
+    Args:
+        title (str): Title shown on the group box.
+
+    Returns:
+        tuple[QGroupBox, QVBoxLayout]: The group box and its layout, to add
+        widgets to.
+    """
+    box = QGroupBox(title)
+    return box, QVBoxLayout(box)
+
+
 class StatusLabel(QWidget):
     """Status text with a small x button. Hidden whenever the text is empty."""
 
@@ -129,6 +143,27 @@ class LayoutPublisherDock(QDockWidget):
 
         body = QWidget()
         layout = QVBoxLayout(body)
+        # The list must be built first: the selection row connects to it
+        self._build_layout_list(layout)
+        layout.addLayout(self._build_selection_row())
+        layout.addWidget(self._build_update_group())
+        layout.addWidget(self._build_publish_group())
+        self.status = StatusLabel()
+        layout.addWidget(self.status)
+        self.setWidget(body)
+
+        self.refresh_dir_display()
+        self._connect_signals()
+        self.populate()
+
+    # ---------- building the panel ----------
+
+    def _build_layout_list(self, layout):
+        """Add the hint, the layout list and the empty-list message to ``layout``.
+
+        Args:
+            layout (QVBoxLayout): The panel's main layout.
+        """
         self.hint_label = QLabel("Select layouts (double-click to open layout designer):")
         self.hint_label.setWordWrap(True)
         layout.addWidget(self.hint_label)
@@ -147,41 +182,59 @@ class LayoutPublisherDock(QDockWidget):
         self.empty_label.hide()
         layout.addWidget(self.empty_label, 1)  # stretch: takes the list's space
 
-        sel_row = QHBoxLayout()
+    def _build_selection_row(self):
+        """Create the All / None / Rename buttons below the layout list.
+
+        Returns:
+            QHBoxLayout: The row of buttons.
+        """
+        row = QHBoxLayout()
         btn_all = QPushButton("All")
         btn_none = QPushButton("None")
         btn_all.clicked.connect(self.list_widget.selectAll)
         btn_none.clicked.connect(self.list_widget.clearSelection)
-        sel_row.addWidget(btn_all)
-        sel_row.addWidget(btn_none)
+        row.addWidget(btn_all)
+        row.addWidget(btn_none)
 
         self.btn_rename = QPushButton("Rename…")
         self.btn_rename.setToolTip("Rename the selected layout (select exactly one)")
         self.btn_rename.setEnabled(False)  # only enabled when exactly one layout is selected
         self.btn_rename.clicked.connect(self.rename_layout)
         self.list_widget.itemSelectionChanged.connect(self.update_rename_button)
-        sel_row.addStretch()
-        sel_row.addWidget(self.btn_rename)
-        layout.addLayout(sel_row)
+        row.addStretch()
+        row.addWidget(self.btn_rename)
+        return row
 
-        # --- Update group ---
-        update_box = QGroupBox("Update")
-        update_layout = QVBoxLayout(update_box)
+    def _build_update_group(self):
+        """Create the Update group: the refresh option and the Update button.
+
+        Returns:
+            QGroupBox: The group box.
+        """
+        box, box_layout = make_group("Update")
         self.chk_layout_refresh = QCheckBox("Also update legends, labels and other items")
         self.chk_layout_refresh.setToolTip(
             "After refreshing the maps, also refresh the rest of the layouts: "
             "legends, scale bars, labels with dynamic text and attribute tables."
         )
         self.chk_layout_refresh.setChecked(True)
-        update_layout.addWidget(self.chk_layout_refresh)
+        box_layout.addWidget(self.chk_layout_refresh)
+
         btn_update = QPushButton("Update maps")
         btn_update.clicked.connect(self.update_maps)
-        update_layout.addWidget(btn_update)
-        layout.addWidget(update_box)
+        box_layout.addWidget(btn_update)
+        return box
 
-        # --- Publish group ---
-        publish_box = QGroupBox("Publish")
-        publish_layout = QVBoxLayout(publish_box)
+    def _build_publish_group(self):
+        """Create the Publish group: format, export location and the Publish button.
+
+        The last used format is restored from the settings, and saved again
+        whenever it changes.
+
+        Returns:
+            QGroupBox: The group box.
+        """
+        box, box_layout = make_group("Publish")
 
         fmt_row = QHBoxLayout()
         fmt_row.addWidget(QLabel("Format:"))
@@ -195,9 +248,9 @@ class LayoutPublisherDock(QDockWidget):
             lambda t: self.settings.setValue(SETTINGS_FORMAT, t)
         )
         fmt_row.addWidget(self.format_combo, 1)
-        publish_layout.addLayout(fmt_row)
+        box_layout.addLayout(fmt_row)
 
-        publish_layout.addWidget(QLabel("Export location:"))
+        box_layout.addWidget(QLabel("Export location:"))
         loc_row = QHBoxLayout()
         self.dir_edit = QLineEdit()
         self.dir_edit.setReadOnly(True)  # changed only via the folder dialog
@@ -206,48 +259,48 @@ class LayoutPublisherDock(QDockWidget):
         self.btn_dir = QPushButton("Set…")
         self.btn_dir.clicked.connect(self.choose_export_dir)
         loc_row.addWidget(self.btn_dir)
-        publish_layout.addLayout(loc_row)
+        box_layout.addLayout(loc_row)
 
         btn_publish = QPushButton("Publish")
         btn_publish.clicked.connect(self.publish_layouts)
-        publish_layout.addWidget(btn_publish)
-        layout.addWidget(publish_box)
+        box_layout.addWidget(btn_publish)
+        return box
 
-        self.status = StatusLabel()
-        layout.addWidget(self.status)
+    # ---------- project signals ----------
 
-        self.setWidget(body)
-        self.refresh_dir_display()
+    def _project_signals(self):
+        """Return the project signals after which the layout list is refreshed.
 
+        Used both to connect and to disconnect them, so the two always match.
+
+        Returns:
+            tuple: The signals of the project and its layout manager.
+        """
         project = QgsProject.instance()
         manager = project.layoutManager()
-        manager.layoutAdded.connect(self.populate)
-        manager.layoutRemoved.connect(self.populate)
-        manager.layoutRenamed.connect(self.populate)
-        project.readProject.connect(self.populate)
-        project.cleared.connect(self.populate)
-        # Saving a new project for the first time changes which message is shown
-        project.fileNameChanged.connect(self.populate)
-        project.isDirtyChanged.connect(self.populate)
+        return (
+            manager.layoutAdded,
+            manager.layoutRemoved,
+            manager.layoutRenamed,
+            project.readProject,
+            project.cleared,
+            # Saving a new project for the first time changes which message is shown
+            project.fileNameChanged,
+            # A new, unsaved project counts as in use once it has changes
+            project.isDirtyChanged,
+        )
 
-        self.populate()
+    def _connect_signals(self):
+        """Refresh the layout list whenever one of the project signals fires."""
+        for sig in self._project_signals():
+            sig.connect(self.populate)
 
     def disconnect_signals(self):
         """Disconnect the project signals that refresh the layout list.
 
         Called by the plugin before the panel is deleted on unload.
         """
-        project = QgsProject.instance()
-        manager = project.layoutManager()
-        for sig in (
-            manager.layoutAdded,
-            manager.layoutRemoved,
-            manager.layoutRenamed,
-            project.readProject,
-            project.cleared,
-            project.fileNameChanged,
-            project.isDirtyChanged,
-        ):
+        for sig in self._project_signals():
             try:
                 sig.disconnect(self.populate)
             except (TypeError, RuntimeError):
