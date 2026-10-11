@@ -45,6 +45,28 @@ SETTINGS_FORMAT = "LayoutPublisher/export_format"
 
 LEVEL_CRITICAL = Qgis.MessageLevel.Critical
 
+# Shown in place of the layout list when there is nothing to list
+MSG_NO_PROJECT = "No layouts yet. Open a project, or create a layout to get started."
+MSG_NO_LAYOUTS = (
+    "This project doesn't contain any layouts yet. Once created, layouts will be listed here."
+)
+
+
+def project_in_use(qgs_project):
+    """Return whether the user is working in a project.
+
+    QGIS always has a project, even right after start. A project counts as
+    in use once it was opened or saved (it has a file name) or has unsaved
+    changes, so a new, unsaved project the user is working in counts too.
+
+    Args:
+        qgs_project (QgsProject): The project to check.
+
+    Returns:
+        bool: True if the project has a file name or unsaved changes.
+    """
+    return bool(qgs_project.fileName()) or qgs_project.isDirty()
+
 
 class StatusLabel(QWidget):
     """Status text with a small x button. Hidden whenever the text is empty."""
@@ -107,7 +129,9 @@ class LayoutPublisherDock(QDockWidget):
 
         body = QWidget()
         layout = QVBoxLayout(body)
-        layout.addWidget(QLabel("Select layouts (double-click to open layout designer):"))
+        self.hint_label = QLabel("Select layouts (double-click to open layout designer):")
+        self.hint_label.setWordWrap(True)
+        layout.addWidget(self.hint_label)
 
         # Multi-selection list; shared by the Update and Publish actions
         self.list_widget = QListWidget()
@@ -115,6 +139,13 @@ class LayoutPublisherDock(QDockWidget):
         self.list_widget.itemDoubleClicked.connect(self.open_layout)
         self.list_widget.setToolTip("Double-click a layout to open it in the layout designer")
         layout.addWidget(self.list_widget)
+
+        # Shown instead of the list when there are no layouts to list
+        self.empty_label = QLabel()
+        self.empty_label.setWordWrap(True)
+        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty_label.hide()
+        layout.addWidget(self.empty_label, 1)  # stretch: takes the list's space
 
         sel_row = QHBoxLayout()
         btn_all = QPushButton("All")
@@ -159,7 +190,7 @@ class LayoutPublisherDock(QDockWidget):
         # Restore the last used format, falling back to PDF
         saved_fmt = self.settings.value(SETTINGS_FORMAT, "PDF")
         idx = self.format_combo.findText(str(saved_fmt))
-        self.format_combo.setCurrentIndex(idx if idx >= 0 else 0)
+        self.format_combo.setCurrentIndex(max(idx, 0))
         self.format_combo.currentTextChanged.connect(
             lambda t: self.settings.setValue(SETTINGS_FORMAT, t)
         )
@@ -195,6 +226,9 @@ class LayoutPublisherDock(QDockWidget):
         manager.layoutRenamed.connect(self.populate)
         project.readProject.connect(self.populate)
         project.cleared.connect(self.populate)
+        # Saving a new project for the first time changes which message is shown
+        project.fileNameChanged.connect(self.populate)
+        project.isDirtyChanged.connect(self.populate)
 
         self.populate()
 
@@ -211,6 +245,8 @@ class LayoutPublisherDock(QDockWidget):
             manager.layoutRenamed,
             project.readProject,
             project.cleared,
+            project.fileNameChanged,
+            project.isDirtyChanged,
         ):
             try:
                 sig.disconnect(self.populate)
@@ -222,17 +258,38 @@ class LayoutPublisherDock(QDockWidget):
     def populate(self, *args):
         """Fill the list, keeping the current selection where possible.
 
+        If there are no layouts, a message is shown instead of the list.
+
         Connected to several project signals, which pass different
         arguments, hence ``*args`` (ignored).
         """
         previously_selected = {i.text() for i in self.list_widget.selectedItems()}
         self.list_widget.clear()
-        manager = QgsProject.instance().layoutManager()
-        for lyt in sorted(manager.layouts(), key=lambda lay: lay.name().lower()):
+        project = QgsProject.instance()
+        layouts = project.layoutManager().layouts()
+        for lyt in sorted(layouts, key=lambda lay: lay.name().lower()):
             item = QListWidgetItem(lyt.name())
             self.list_widget.addItem(item)
             if lyt.name() in previously_selected:
                 item.setSelected(True)
+
+        if layouts:
+            self.show_empty_message("")
+        elif project_in_use(project):
+            self.show_empty_message(MSG_NO_LAYOUTS)
+        else:
+            self.show_empty_message(MSG_NO_PROJECT)
+
+    def show_empty_message(self, text):
+        """Show ``text`` in place of the layout list, or the list if ``text`` is empty.
+
+        Args:
+            text (str): The message to display.
+        """
+        self.empty_label.setText(text)
+        self.empty_label.setVisible(bool(text))
+        self.list_widget.setVisible(not text)
+        self.hint_label.setVisible(not text)
 
     def open_layout(self, list_item):
         """Open the layout of ``list_item`` in the layout designer.
