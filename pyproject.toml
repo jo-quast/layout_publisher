@@ -1,2 +1,7 @@
 [tool.ruff]
 line-length = 100
+
+[tool.pylint.main]
+# qgis and PyQt5 are compiled C extensions Pylint can't read; don't check names imported
+# from them (loading them with extension-pkg-allow-list made Pylint hang in VS Code)
+ignored-modules = ["qgis", "PyQt5"]
