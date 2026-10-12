@@ -176,7 +176,6 @@ class LayoutPublisherPanel(QDockWidget):
 
         self.btn_refresh = QPushButton("Refresh")
         self.btn_refresh.clicked.connect(self.refresh_layout_items)
-        self.btn_refresh.setEnabled(False)  # enabled by update_refresh_button
         box_layout.addWidget(self.btn_refresh)
         return box
 
