@@ -1,6 +1,6 @@
 """Tests for exporting a single layout with ``publisher.export_layout``, in every format.
 
-Unlike the tests in ``test_stop_export.py``, these run the real QGIS export and write
+Unlike the tests in ``test_panel_publish.py``, these run the real QGIS export and write
 files, into pytest's temporary folder ``tmp_path``.
 """
 

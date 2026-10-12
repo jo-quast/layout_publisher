@@ -1,4 +1,4 @@
-"""Tests for stopping an export in the publish progress dialog.
+"""Tests for publishing from the panel (``publish_layouts``): stopping an export.
 
 The ``export_layout`` function the panel uses is replaced with a fake (see
 ``fake_export`` below), so the tests run fast, write no files, and can "click" Stop

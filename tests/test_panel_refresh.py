@@ -1,4 +1,4 @@
-"""Tests for the Refresh group: the Refresh button state and which items get refreshed."""
+"""Tests for the panel's Refresh group: the Refresh button state and which items get refreshed."""
 
 import pytest
 from layout_publisher.panel import (

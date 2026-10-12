@@ -22,7 +22,7 @@ and Linux use the Python that comes with the QGIS installation:
 
 ```bash
 /Applications/QGIS.app/Contents/MacOS/python -m pytest              # all tests
-/Applications/QGIS.app/Contents/MacOS/python -m pytest tests/test_refresh.py::test_refresh_options
+/Applications/QGIS.app/Contents/MacOS/python -m pytest tests/test_publisher.py::test_export_pdf
 ```
 
 - `tests/conftest.py` has the fixtures `project` (fresh project per test), `panel` (the panel,
