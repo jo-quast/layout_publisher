@@ -1,6 +1,12 @@
 """Tests for the Refresh group: the Refresh button state and which items get refreshed."""
 
 import pytest
+from layout_publisher.dock import (
+    MSG_REFRESHED,
+    MSG_REFRESHED_MAPS,
+    MSG_REFRESHED_OTHERS,
+    MSG_REFRESHED_SEPARATOR,
+)
 from qgis.core import (
     QgsLayoutFrame,
     QgsLayoutItemAttributeTable,
@@ -75,13 +81,31 @@ def test_refresh_button_disabled_without_options(panel):
 # ---------- refreshed items ----------
 
 
+def refreshed(*parts, n_layouts=1):
+    """Return the status message after a refresh, built from the panel's own templates.
+
+    Args:
+        *parts (str): The counted parts, e.g. ``MAPS_1``, in the order the panel lists them.
+        n_layouts (int, optional): Number of refreshed layouts.
+
+    Returns:
+        str: The expected status message.
+    """
+    return MSG_REFRESHED.format(items=MSG_REFRESHED_SEPARATOR.join(parts), n_layouts=n_layouts)
+
+
+# The counted parts for the test layout: 1 map and 2 other items
+MAPS_1 = MSG_REFRESHED_MAPS.format(n_maps=1)
+OTHERS_2 = MSG_REFRESHED_OTHERS.format(n_others=2)
+
+
 # parametrize runs this test once per row, with the values passed as arguments
 @pytest.mark.parametrize(
     ("maps", "other", "expected_message", "map_redrawn"),
     [
-        (True, True, "Refreshed 1 map(s) and 2 other item(s) in 1 layout(s).", True),
-        (True, False, "Refreshed 1 map(s) in 1 layout(s).", True),
-        (False, True, "Refreshed 2 other item(s) in 1 layout(s).", False),
+        (True, True, refreshed(MAPS_1, OTHERS_2), True),
+        (True, False, refreshed(MAPS_1), True),
+        (False, True, refreshed(OTHERS_2), False),
     ],
 )
 def test_refresh_options(panel, map_redraws, maps, other, expected_message, map_redrawn):

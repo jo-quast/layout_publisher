@@ -18,6 +18,21 @@ COLOR_RUNNING = "#d08a00"  # amber: currently exporting
 COLOR_OK = "#2e8b57"  # green: exported
 COLOR_FAIL = "#c0392b"  # red: failed
 
+# Status marks shown in front of each layout
+MARK_PENDING = "·"  # waiting
+MARK_RUNNING = "…"  # currently exporting
+MARK_DONE = "✓"  # exported
+MARK_FAILED = "✗"  # failed
+MARK_SKIPPED = "–"  # skipped because the export was stopped
+
+# Texts of the dialog; the {placeholders} are filled in with str.format()
+MSG_EXPORTING = "Exporting {n_layouts} layout(s) as {fmt}…"
+MSG_STOPPING = "Stopping after the current layout…"
+MSG_SUMMARY = "Done: {n_ok} exported"
+MSG_SUMMARY_FAILED = ", {n_failed} failed (hover over {mark} for details)"
+MSG_SUMMARY_SKIPPED = ", {n_skipped} skipped"
+TOOLTIP_SKIPPED = "Skipped (export stopped)"
+
 
 class PublishProgressDialog(QDialog):
     """Modal dialog showing the export progress, one row per layout.
@@ -51,7 +66,7 @@ class PublishProgressDialog(QDialog):
 
         layout = QVBoxLayout(self)
 
-        self.header = QLabel(f"Exporting {len(names)} layout(s) as {fmt.value}…")
+        self.header = QLabel(MSG_EXPORTING.format(n_layouts=len(names), fmt=fmt.value))
         self.header.setWordWrap(True)
         layout.addWidget(self.header)
 
@@ -72,7 +87,7 @@ class PublishProgressDialog(QDialog):
         rows = QVBoxLayout(inner)
         for name in names:
             row = QHBoxLayout()
-            mark = QLabel("·")
+            mark = QLabel(MARK_PENDING)
             mark.setFixedWidth(20)
             mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
             mark.setStyleSheet(f"color: {COLOR_PENDING}; font-weight: bold;")
@@ -114,19 +129,19 @@ class PublishProgressDialog(QDialog):
 
     def set_running(self, name):
         """Mark a layout as currently being exported."""
-        self._set_mark(name, "…", COLOR_RUNNING)
+        self._set_mark(name, MARK_RUNNING, COLOR_RUNNING)
 
     def set_done(self, name):
         """Mark a layout as exported successfully (green check)."""
-        self._set_mark(name, "✓", COLOR_OK)
+        self._set_mark(name, MARK_DONE, COLOR_OK)
 
     def set_failed(self, name, message):
         """Mark a layout as failed (red cross), with the error as tooltip."""
-        self._set_mark(name, "✗", COLOR_FAIL, message)
+        self._set_mark(name, MARK_FAILED, COLOR_FAIL, message)
 
     def set_skipped(self, name):
         """Mark a layout as skipped because the export was stopped (grey dash)."""
-        self._set_mark(name, "–", COLOR_PENDING, "Skipped (export stopped)")
+        self._set_mark(name, MARK_SKIPPED, COLOR_PENDING, TOOLTIP_SKIPPED)
 
     def advance(self):
         """Advance the progress bar by one finished layout."""
@@ -145,11 +160,11 @@ class PublishProgressDialog(QDialog):
                 was stopped.
         """
         self._running = False
-        text = f"Done: {n_ok} exported"
+        text = MSG_SUMMARY.format(n_ok=n_ok)
         if n_failed:
-            text += f", {n_failed} failed (hover over ✗ for details)"
+            text += MSG_SUMMARY_FAILED.format(n_failed=n_failed, mark=MARK_FAILED)
         if n_skipped:
-            text += f", {n_skipped} skipped"
+            text += MSG_SUMMARY_SKIPPED.format(n_skipped=n_skipped)
         self.header.setText(text)
         self.btn_stop.setVisible(False)
         self.btn_close.setVisible(True)
@@ -164,7 +179,7 @@ class PublishProgressDialog(QDialog):
         clicked twice.
         """
         self.stop_requested = True
-        self.header.setText("Stopping after the current layout…")
+        self.header.setText(MSG_STOPPING)
         self.btn_stop.setEnabled(False)
 
     def reject(self):

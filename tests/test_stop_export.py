@@ -6,7 +6,7 @@ exported.
 """
 
 import pytest
-from layout_publisher.dock import SETTINGS_DIR
+from layout_publisher.dock import MSG_PUBLISH_SKIPPED, MSG_PUBLISHED, SETTINGS_DIR
 from layout_publisher.export_format import ExportFormat
 from qgis.core import QgsLayoutExporter
 
@@ -75,11 +75,10 @@ def test_stop_skips_remaining_layouts(panel, add_layout, fake_export):
     panel.publish_layouts()
 
     assert exported == ["A"]  # the layout being exported when Stop was clicked still finishes
-    assert "2 layout(s) skipped" in panel.status.label.text()
+    assert MSG_PUBLISH_SKIPPED.format(n_skipped=2) in panel.status.label.text()
 
 
-@pytest.mark.usefixtures("export_dir")  # the folder must be set, but isn't used directly
-def test_stop_during_last_layout_skips_nothing(panel, add_layout, fake_export):
+def test_stop_during_last_layout_skips_nothing(panel, add_layout, fake_export, export_dir):
     """Clicking Stop during the last export doesn't skip any layouts."""
     for name in ("A", "B", "C"):
         add_layout(name)
@@ -89,11 +88,13 @@ def test_stop_during_last_layout_skips_nothing(panel, add_layout, fake_export):
     panel.publish_layouts()
 
     assert exported == ["A", "B", "C"]
-    assert "skipped" not in panel.status.label.text()
+    # Only the "Published" line: no line about skipped layouts (or errors) follows it
+    assert panel.status.label.text() == MSG_PUBLISHED.format(
+        n_ok=3, fmt="PDF", export_dir=export_dir
+    )
 
 
-@pytest.mark.usefixtures("export_dir")  # the folder must be set, but isn't used directly
-def test_not_stopping_exports_all(panel, add_layout, fake_export):
+def test_not_stopping_exports_all(panel, add_layout, fake_export, export_dir):
     """Not clicking Stop exports all layouts."""
     for name in ("A", "B", "C"):
         add_layout(name)
@@ -103,4 +104,7 @@ def test_not_stopping_exports_all(panel, add_layout, fake_export):
     panel.publish_layouts()
 
     assert exported == ["A", "B", "C"]
-    assert "skipped" not in panel.status.label.text()
+    # Only the "Published" line: no line about skipped layouts (or errors) follows it
+    assert panel.status.label.text() == MSG_PUBLISHED.format(
+        n_ok=3, fmt="PDF", export_dir=export_dir
+    )

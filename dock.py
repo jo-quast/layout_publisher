@@ -61,6 +61,28 @@ MSG_NO_LAYOUTS = (
     "This project doesn't contain any layouts yet. Once created, layouts will be listed here."
 )
 
+# Status line texts; the {placeholders} are filled in with str.format()
+MSG_SELECT_LAYOUT = "Please select at least one layout."
+# Added on its own line below a refresh or publish summary if any layout failed
+MSG_ERRORS = "Errors: {errors}"
+# Entry in that error list for a layout that no longer exists
+ERROR_NOT_FOUND = "'{name}' not found"
+
+# Summary in the status line after refreshing, e.g. "Refreshed 1 map(s) and 2 other
+# item(s) in 1 layout(s)."; {items} is the parts below joined by the separator
+MSG_REFRESHED = "Refreshed {items} in {n_layouts} layout(s)."
+MSG_REFRESHED_MAPS = "{n_maps} map(s)"
+MSG_REFRESHED_OTHERS = "{n_others} other item(s)"
+MSG_REFRESHED_SEPARATOR = " and "
+
+# Summary in the status line after publishing; each part goes on its own line
+MSG_PUBLISHED = "Published {n_ok} layout(s) as {fmt} to {export_dir}."
+MSG_PUBLISH_SKIPPED = "{n_skipped} layout(s) skipped."
+# A layout whose export failed: its entry in the error list, and its tooltips in the dialog
+ERROR_EXPORT_FAILED = "'{name}': export failed"
+TOOLTIP_NOT_FOUND = "Layout not found"
+TOOLTIP_EXPORT_FAILED = "Export failed"
+
 
 def project_in_use(qgs_project):
     """Return whether the user is working in a project.
@@ -503,7 +525,7 @@ class LayoutPublisherDock(QDockWidget):
         """
         selected = self.list_widget.selectedItems()
         if not selected:
-            self.status.setText("Please select at least one layout.")
+            self.status.setText(MSG_SELECT_LAYOUT)
             return
 
         manager = QgsProject.instance().layoutManager()
@@ -520,7 +542,7 @@ class LayoutPublisherDock(QDockWidget):
                 name = list_item.text()
                 lyt = manager.layoutByName(name)
                 if lyt is None:
-                    errors.append(f"'{name}' not found")
+                    errors.append(ERROR_NOT_FOUND.format(name=name))
                     continue
                 try:
                     for item in lyt.items():
@@ -552,12 +574,14 @@ class LayoutPublisherDock(QDockWidget):
 
         msg_parts = []
         if maps_checked:
-            msg_parts.append(f"{n_maps} map(s)")
+            msg_parts.append(MSG_REFRESHED_MAPS.format(n_maps=n_maps))
         if others_checked:
-            msg_parts.append(f"{n_others} other item(s)")
-        msg = f"Refreshed {' and '.join(msg_parts)} in {n_layouts} layout(s)."
+            msg_parts.append(MSG_REFRESHED_OTHERS.format(n_others=n_others))
+        msg = MSG_REFRESHED.format(
+            items=MSG_REFRESHED_SEPARATOR.join(msg_parts), n_layouts=n_layouts
+        )
         if errors:
-            msg += "\nErrors: " + "; ".join(errors)
+            msg += "\n" + MSG_ERRORS.format(errors="; ".join(errors))
         self.status.setText(msg)
 
     def publish_layouts(self):
@@ -583,7 +607,7 @@ class LayoutPublisherDock(QDockWidget):
 
         selected = self.list_widget.selectedItems()
         if not selected:
-            self.status.setText("Please select at least one layout.")
+            self.status.setText(MSG_SELECT_LAYOUT)
             return
 
         fmt = self.format_combo.currentData()
@@ -611,8 +635,8 @@ class LayoutPublisherDock(QDockWidget):
 
             lyt = manager.layoutByName(name)
             if lyt is None:
-                errors.append(f"'{name}' not found")
-                dialog.set_failed(name, "Layout not found")
+                errors.append(ERROR_NOT_FOUND.format(name=name))
+                dialog.set_failed(name, TOOLTIP_NOT_FOUND)
             else:
                 # Replace characters that are not allowed in file names
                 safe_name = re.sub(r'[\\/:*?"<>|]', "_", name).strip() or "layout"
@@ -623,8 +647,8 @@ class LayoutPublisherDock(QDockWidget):
                         n_ok += 1
                         dialog.set_done(name)
                     else:
-                        errors.append(f"'{name}': export failed")
-                        dialog.set_failed(name, "Export failed")
+                        errors.append(ERROR_EXPORT_FAILED.format(name=name))
+                        dialog.set_failed(name, TOOLTIP_EXPORT_FAILED)
                 except Exception as e:
                     # Report the failure but keep going with the other layouts
                     errors.append(f"'{name}': {e}")
@@ -635,11 +659,11 @@ class LayoutPublisherDock(QDockWidget):
 
         dialog.finish(n_ok, len(errors), n_skipped)
 
-        msg = f"Published {n_ok} layout(s) as {fmt.value} to {export_dir}."
+        msg = MSG_PUBLISHED.format(n_ok=n_ok, fmt=fmt.value, export_dir=export_dir)
         if errors:
-            msg += "\nErrors: " + "; ".join(errors)
+            msg += "\n" + MSG_ERRORS.format(errors="; ".join(errors))
         if n_skipped:
-            msg += f"\n{n_skipped} layout(s) skipped."
+            msg += "\n" + MSG_PUBLISH_SKIPPED.format(n_skipped=n_skipped)
         self.status.setText(msg)
 
     def export_layout(self, layout, path, fmt):
