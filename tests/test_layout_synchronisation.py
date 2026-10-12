@@ -9,7 +9,7 @@ def test_layouts_are_listed_alphabetically(panel, add_layout):
     add_layout("A plan")
 
     assert listed_layouts(panel) == ["A plan", "b plan"]
-    assert not panel.hint_label.isHidden()
+    assert not panel.layout_list.hint_label.isHidden()
 
 
 def test_renamed_layout_is_updated_in_list(panel, add_layout):

@@ -16,7 +16,6 @@ import os
 from qgis.core import Qgis, QgsLayoutExporter, QgsProject, QgsSettings
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import (
-    QAbstractItemView,
     QApplication,
     QCheckBox,
     QComboBox,
@@ -27,8 +26,6 @@ from qgis.PyQt.QtWidgets import (
     QInputDialog,
     QLabel,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QPushButton,
     QVBoxLayout,
     QWidget,
@@ -36,6 +33,7 @@ from qgis.PyQt.QtWidgets import (
 from qgis.utils import iface
 
 from .export_format import ExportFormat
+from .layout_list import LayoutList
 from .progress_dialog import PublishProgressDialog
 from .publisher import export_layout, export_path, refresh_layout
 from .status_label import StatusLabel
@@ -45,12 +43,6 @@ SETTINGS_DIR = "LayoutPublisher/export_dir"
 SETTINGS_FORMAT = "LayoutPublisher/export_format"
 
 LEVEL_CRITICAL = Qgis.MessageLevel.Critical
-
-# Shown in place of the layout list when there is nothing to list
-MSG_NO_PROJECT = "No layouts yet. Open a project, or create a layout to get started."
-MSG_NO_LAYOUTS = (
-    "This project doesn't contain any layouts yet. Once created, layouts will be listed here."
-)
 
 # Status line texts; the {placeholders} are filled in with str.format()
 MSG_SELECT_LAYOUT = "Please select at least one layout."
@@ -75,22 +67,6 @@ TOOLTIP_NOT_FOUND = "Layout not found"
 TOOLTIP_EXPORT_FAILED = "Export failed"
 
 
-def project_in_use(qgs_project):
-    """Return whether the user is working in a project.
-
-    QGIS always has a project, even right after start. A project counts as
-    in use once it was opened or saved (it has a file name) or has unsaved
-    changes, so a new, unsaved project the user is working in counts too.
-
-    Args:
-        qgs_project (QgsProject): The project to check.
-
-    Returns:
-        bool: True if the project has a file name or unsaved changes.
-    """
-    return bool(qgs_project.fileName()) or qgs_project.isDirty()
-
-
 def make_group(title):
     """Create a group box with a vertical layout.
 
@@ -108,12 +84,12 @@ def make_group(title):
 class LayoutPublisherPanel(QDockWidget):
     """Dockable panel to refresh and publish the project's print layouts.
 
-    The layout list stays in sync with the project: it is refreshed whenever
-    layouts are added, removed or renamed, or another project is opened.
+    The panel puts together the layout list (``LayoutList``), the Refresh and Publish
+    groups and the status line, and carries out the actions on the selected layouts.
     """
 
     def __init__(self, parent=None):
-        """Build the panel, connect project signals and fill the layout list.
+        """Build the panel; the layout list connects to the project and fills itself.
 
         Args:
             parent (QWidget, optional): Parent widget, usually the QGIS
@@ -130,7 +106,9 @@ class LayoutPublisherPanel(QDockWidget):
         body = QWidget()
         layout = QVBoxLayout(body)
         # The list must be built first: the selection row connects to it
-        self._build_layout_list(layout)
+        self.layout_list = LayoutList()
+        self.layout_list.list_widget.itemDoubleClicked.connect(self.open_layout)
+        layout.addWidget(self.layout_list, 1)  # stretch: the list takes the free space
         layout.addLayout(self._build_selection_row())
         layout.addWidget(self._build_refresh_group())
         layout.addWidget(self._build_publish_group())
@@ -139,34 +117,8 @@ class LayoutPublisherPanel(QDockWidget):
         self.setWidget(body)
 
         self.refresh_dir_display()
-        self._connect_signals()
-        self.populate()
 
     # ---------- building the panel ----------
-
-    def _build_layout_list(self, layout):
-        """Add the hint, the layout list and the empty-list message to ``layout``.
-
-        Args:
-            layout (QVBoxLayout): The panel's main layout.
-        """
-        self.hint_label = QLabel("Select layouts (double-click to open layout designer):")
-        self.hint_label.setWordWrap(True)
-        layout.addWidget(self.hint_label)
-
-        # Multi-selection list; shared by the Refresh and Publish actions
-        self.list_widget = QListWidget()
-        self.list_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.list_widget.itemDoubleClicked.connect(self.open_layout)
-        self.list_widget.setToolTip("Double-click a layout to open it in the layout designer")
-        layout.addWidget(self.list_widget)
-
-        # Shown instead of the list when there are no layouts to list
-        self.empty_label = QLabel()
-        self.empty_label.setWordWrap(True)
-        self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.empty_label.hide()
-        layout.addWidget(self.empty_label, 1)  # stretch: takes the list's space
 
     def _build_selection_row(self):
         """Create the All / None / Rename buttons below the layout list.
@@ -174,11 +126,12 @@ class LayoutPublisherPanel(QDockWidget):
         Returns:
             QHBoxLayout: The row of buttons.
         """
+        list_widget = self.layout_list.list_widget
         row = QHBoxLayout()
         btn_all = QPushButton("All")
         btn_none = QPushButton("None")
-        btn_all.clicked.connect(self.list_widget.selectAll)
-        btn_none.clicked.connect(self.list_widget.clearSelection)
+        btn_all.clicked.connect(list_widget.selectAll)
+        btn_none.clicked.connect(list_widget.clearSelection)
         row.addWidget(btn_all)
         row.addWidget(btn_none)
 
@@ -186,8 +139,8 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_rename.setToolTip("Rename the selected layout (select exactly one)")
         self.btn_rename.setEnabled(False)  # only enabled when exactly one layout is selected
         self.btn_rename.clicked.connect(self.rename_layout)
-        self.list_widget.itemSelectionChanged.connect(self.update_rename_button)
-        self.list_widget.itemSelectionChanged.connect(self.update_refresh_button)
+        list_widget.itemSelectionChanged.connect(self.update_rename_button)
+        list_widget.itemSelectionChanged.connect(self.update_refresh_button)
         row.addStretch()
         row.addWidget(self.btn_rename)
         return row
@@ -269,83 +222,14 @@ class LayoutPublisherPanel(QDockWidget):
         box_layout.addWidget(btn_publish)
         return box
 
-    # ---------- project signals ----------
-
-    def _project_signals(self):
-        """Return the project signals after which the layout list is refreshed.
-
-        Used both to connect and to disconnect them, so the two always match.
-
-        Returns:
-            tuple: The signals of the project and its layout manager.
-        """
-        project = QgsProject.instance()
-        manager = project.layoutManager()
-        return (
-            manager.layoutAdded,
-            manager.layoutRemoved,
-            manager.layoutRenamed,
-            project.readProject,
-            project.cleared,
-            # Saving a new project for the first time changes which message is shown
-            project.fileNameChanged,
-            # A new, unsaved project counts as in use once it has changes
-            project.isDirtyChanged,
-        )
-
-    def _connect_signals(self):
-        """Refresh the layout list whenever one of the project signals fires."""
-        for sig in self._project_signals():
-            sig.connect(self.populate)
-
     def disconnect_signals(self):
-        """Disconnect the project signals that refresh the layout list.
+        """Disconnect the layout list from the project's signals.
 
         Called by the plugin before the panel is deleted on unload.
         """
-        for sig in self._project_signals():
-            try:
-                sig.disconnect(self.populate)
-            except (TypeError, RuntimeError):
-                pass
+        self.layout_list.disconnect_signals()
 
-    # ---------- list handling ----------
-
-    def populate(self, *args):
-        """Fill the list, keeping the current selection where possible.
-
-        If there are no layouts, a message is shown instead of the list.
-
-        Connected to several project signals, which pass different
-        arguments, hence ``*args`` (ignored).
-        """
-        previously_selected = {i.text() for i in self.list_widget.selectedItems()}
-        self.list_widget.clear()
-        project = QgsProject.instance()
-        layouts = project.layoutManager().layouts()
-        for lyt in sorted(layouts, key=lambda lay: lay.name().lower()):
-            item = QListWidgetItem(lyt.name())
-            self.list_widget.addItem(item)
-            if lyt.name() in previously_selected:
-                item.setSelected(True)
-
-        if layouts:
-            self.show_empty_message("")
-        elif project_in_use(project):
-            self.show_empty_message(MSG_NO_LAYOUTS)
-        else:
-            self.show_empty_message(MSG_NO_PROJECT)
-
-    def show_empty_message(self, text):
-        """Show ``text`` in place of the layout list, or the list if ``text`` is empty.
-
-        Args:
-            text (str): The message to display.
-        """
-        self.empty_label.setText(text)
-        self.empty_label.setVisible(bool(text))
-        self.list_widget.setVisible(not text)
-        self.hint_label.setVisible(not text)
+    # ---------- layout actions ----------
 
     def open_layout(self, list_item):
         """Open the layout of ``list_item`` in the layout designer.
@@ -366,7 +250,7 @@ class LayoutPublisherPanel(QDockWidget):
 
     def update_rename_button(self):
         """Enable the Rename button only when exactly one layout is selected."""
-        self.btn_rename.setEnabled(len(self.list_widget.selectedItems()) == 1)
+        self.btn_rename.setEnabled(len(self.layout_list.selected_names()) == 1)
 
     def update_refresh_button(self):
         """Enable the Refresh button only if a layout is selected and an option is checked.
@@ -374,24 +258,10 @@ class LayoutPublisherPanel(QDockWidget):
         Connected to the list's selection and to both refresh checkboxes; ``toggled``
         passes the new state, which is ignored here.
         """
-        is_enabled = bool(self.list_widget.selectedItems()) and (
+        is_enabled = bool(self.layout_list.selected_names()) and (
             self.chk_refresh_maps.isChecked() or self.chk_refresh_other.isChecked()
         )
         self.btn_refresh.setEnabled(is_enabled)
-
-    def select_layout(self, name):
-        """Select and scroll to the list entry with the given layout name.
-
-        Args:
-            name (str): Name of the layout to select. Does nothing if no
-                entry has this name.
-        """
-        for i in range(self.list_widget.count()):
-            item = self.list_widget.item(i)
-            if item.text() == name:
-                self.list_widget.setCurrentItem(item)
-                self.list_widget.scrollToItem(item)
-                break
 
     def rename_layout(self):
         """Rename the selected layout using a small input dialog.
@@ -400,12 +270,12 @@ class LayoutPublisherPanel(QDockWidget):
         or already used by another layout, because QGIS requires unique
         layout names.
         """
-        selected = self.list_widget.selectedItems()
+        selected = self.layout_list.selected_names()
         if len(selected) != 1:
             self.status.setText("Please select exactly one layout to rename.")
             return
 
-        old_name = selected[0].text()
+        old_name = selected[0]
         manager = QgsProject.instance().layoutManager()
         lyt = manager.layoutByName(old_name)
         if lyt is None:
@@ -430,7 +300,7 @@ class LayoutPublisherPanel(QDockWidget):
         QgsProject.instance().setDirty(True)
         # The manager's layoutRenamed signal has already refreshed the list,
         # but the old name is no longer selected, so select the new one.
-        self.select_layout(new_name)
+        self.layout_list.select_layout(new_name)
         self.status.setText(f"Renamed '{old_name}' to '{new_name}'.")
 
     # ---------- export location ----------
@@ -476,8 +346,8 @@ class LayoutPublisherPanel(QDockWidget):
         ``publisher.refresh_layout``. A summary, including any errors, is shown
         in the status line.
         """
-        selected = self.list_widget.selectedItems()
-        if not selected:
+        names = self.layout_list.selected_names()
+        if not names:
             self.status.setText(MSG_SELECT_LAYOUT)
             return
 
@@ -491,8 +361,7 @@ class LayoutPublisherPanel(QDockWidget):
 
         QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
         try:
-            for list_item in selected:
-                name = list_item.text()
+            for name in names:
                 lyt = manager.layoutByName(name)
                 if lyt is None:
                     errors.append(ERROR_NOT_FOUND.format(name=name))
@@ -543,13 +412,12 @@ class LayoutPublisherPanel(QDockWidget):
             self.show_error(f"Export location does not exist: {export_dir}")
             return
 
-        selected = self.list_widget.selectedItems()
-        if not selected:
+        names = self.layout_list.selected_names()
+        if not names:
             self.status.setText(MSG_SELECT_LAYOUT)
             return
 
         fmt = self.format_combo.currentData()
-        names = [i.text() for i in selected]
         manager = QgsProject.instance().layoutManager()
         n_ok = 0
         n_skipped = 0

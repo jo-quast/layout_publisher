@@ -67,7 +67,7 @@ def test_stop_skips_remaining_layouts(panel, add_layout, fake_export):
     """Clicking Stop during the first export skips the other layouts."""
     for name in ("A", "B", "C"):
         add_layout(name)
-    panel.list_widget.selectAll()
+    panel.layout_list.list_widget.selectAll()
     exported = fake_export(stop_during="A")
 
     panel.publish_layouts()
@@ -80,7 +80,7 @@ def test_stop_during_last_layout_skips_nothing(panel, add_layout, fake_export, e
     """Clicking Stop during the last export doesn't skip any layouts."""
     for name in ("A", "B", "C"):
         add_layout(name)
-    panel.list_widget.selectAll()
+    panel.layout_list.list_widget.selectAll()
     exported = fake_export(stop_during="C")
 
     panel.publish_layouts()
@@ -96,7 +96,7 @@ def test_not_stopping_exports_all(panel, add_layout, fake_export, export_dir):
     """Not clicking Stop exports all layouts."""
     for name in ("A", "B", "C"):
         add_layout(name)
-    panel.list_widget.selectAll()
+    panel.layout_list.list_widget.selectAll()
     exported = fake_export(stop_during=None)
 
     panel.publish_layouts()

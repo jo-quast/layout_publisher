@@ -42,7 +42,7 @@ def map_redraws(layout):
 
 def select_all(panel):
     """Select all layouts in the panel's list, like clicking **All**."""
-    panel.list_widget.selectAll()
+    panel.layout_list.list_widget.selectAll()
 
 
 def set_options(panel, maps, other):
