@@ -7,3 +7,4 @@
 docs export-ignore
 pyproject.toml export-ignore
 tests export-ignore
+CLAUDE.md export-ignore

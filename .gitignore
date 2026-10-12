@@ -4,6 +4,6 @@ __pycache__/
 .vscode/
 .idea/
 *.zip
-CLAUDE.md
+CLAUDE.local.md
 .qgis-settings/
 .pytest_cache/
