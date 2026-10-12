@@ -257,9 +257,7 @@ class LayoutPublisherPanel(QDockWidget):
         Connected to ``LayoutList.populated``, and called once in ``__init__``, because
         the list is first filled before this connection exists.
         """
-        enabled = False
-        if not self.layout_list.is_empty():
-            enabled = True
+        enabled = not self.layout_list.is_empty()
         self.btn_all.setEnabled(enabled)
         self.btn_none.setEnabled(enabled)
 

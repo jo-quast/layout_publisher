@@ -25,7 +25,7 @@ MARK_DONE = "✓"  # exported
 MARK_FAILED = "✗"  # failed
 MARK_SKIPPED = "–"  # skipped because the export was stopped
 
-# Texts of the dialog; the {placeholders} are filled in with str.format()
+# Texts of the dialog
 MSG_EXPORTING = "Exporting {n_layouts} layout(s) as {fmt}…"
 MSG_STOPPING = "Stopping after the current layout…"
 MSG_SUMMARY = "Done: {n_ok} exported"

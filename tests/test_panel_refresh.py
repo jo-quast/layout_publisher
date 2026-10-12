@@ -94,12 +94,10 @@ def refreshed(*parts, n_layouts=1):
     return MSG_REFRESHED.format(items=MSG_REFRESHED_SEPARATOR.join(parts), n_layouts=n_layouts)
 
 
-# The counted parts for the test layout: 1 map and 2 other items
 MAPS_1 = MSG_REFRESHED_MAPS.format(n_maps=1)
 OTHERS_2 = MSG_REFRESHED_OTHERS.format(n_others=2)
 
 
-# parametrize runs this test once per row, with the values passed as arguments
 @pytest.mark.parametrize(
     ("maps", "other", "expected_message", "map_redrawn"),
     [
