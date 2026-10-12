@@ -190,6 +190,12 @@ Anthropic, which generated much of the initial code and documentation. I
 engineered, reviewed, tested and adapted the result and am responsible for
 the plugin and its maintenance.
 
+I also use this project to learn Python and PyQGIS, so I now work with
+[Claude Code](https://claude.com/claude-code) as a pair programmer. I write
+new features, fixes and tests myself. Claude Code explains the PyQGIS and Qt
+APIs I need, and reviews my changes. It also helps with documentation such as
+docstrings, this README, the changelog, with packaging and git tasks.
+
 ## License
 
 Layout Publisher is free software, released under the
