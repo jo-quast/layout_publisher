@@ -1,19 +1,26 @@
 [general]
 name=Layout Publisher
 qgisMinimumVersion=3.30
-description=Dockable panel to refresh and publish (PDF/PNG) print layouts
+description=Dockable panel to refresh and publish (PDF/PNG/SVG) print layouts
 author=Jonathan Quast
 email=jonathan.quast@gmail.com
-about=Dockable panel that lists all print layouts of the current project. Select one or more layouts to refresh their items or publish them as PDF or PNG to a preset export location.
-tags=layout,print layout,maps,refresh,export,pdf,png,publish
+about=Dockable panel that lists all print layouts of the current project. Select one or more layouts to refresh their items or publish them as PDF, PNG or SVG to a preset export location.
+tags=layout,print layout,maps,refresh,export,pdf,png,svg,publish
 experimental=False
 deprecated=False
 icon=icon.png
 homepage=https://github.com/jo-quast/layout_publisher
 repository=https://github.com/jo-quast/layout_publisher
 tracker=https://github.com/jo-quast/layout_publisher/issues
-version=1.0.0
-changelog=1.0.0
+version=1.1.0
+changelog=1.1.0
+    - Rename the selected layout directly from the panel
+    - Double-click a layout in the list to open it in the layout designer
+    - Show a message in the panel when there are no layouts to list
+    - Choose whether to refresh maps, other items (legends, labels, tables, ...) or both
+    - Stop an export from the progress window
+    - Export layouts as SVG
+    1.0.0
     - Initial release
     - Dockable panel listing all print layouts of the project
     - Refresh only map items or all items in selected layouts
