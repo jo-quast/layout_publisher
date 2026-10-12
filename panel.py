@@ -40,7 +40,6 @@ from qgis.PyQt.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QPushButton,
-    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -48,6 +47,7 @@ from qgis.utils import iface
 
 from .export_format import ExportFormat
 from .progress_dialog import PublishProgressDialog
+from .status_label import StatusLabel
 
 # Keys under which the export folder and format are stored in QgsSettings
 SETTINGS_DIR = "LayoutPublisher/export_dir"
@@ -112,46 +112,6 @@ def make_group(title):
     """
     box = QGroupBox(title)
     return box, QVBoxLayout(box)
-
-
-class StatusLabel(QWidget):
-    """Status text with a small x button. Hidden whenever the text is empty."""
-
-    def __init__(self, parent=None):
-        """Build the label and close button; the widget starts hidden.
-
-        Args:
-            parent (QWidget, optional): Parent widget.
-        """
-        super().__init__(parent)
-        row = QHBoxLayout(self)
-        row.setContentsMargins(0, 0, 0, 0)
-
-        self.label = QLabel("")
-        self.label.setWordWrap(True)
-        row.addWidget(self.label, 1)
-
-        self.btn_close = QToolButton()
-        self.btn_close.setText("✕")
-        self.btn_close.setAutoRaise(True)
-        self.btn_close.setToolTip("Clear message")
-        self.btn_close.clicked.connect(self.clear)
-        row.addWidget(self.btn_close, 0, Qt.AlignmentFlag.AlignTop)
-
-        self.hide()
-
-    def setText(self, text):
-        """Show ``text``, or hide the whole widget if it is empty.
-
-        Args:
-            text (str): The message to display.
-        """
-        self.label.setText(text)
-        self.setVisible(bool(text))
-
-    def clear(self):
-        """Clear the message and hide the widget."""
-        self.setText("")
 
 
 class LayoutPublisherPanel(QDockWidget):
