@@ -44,8 +44,9 @@ choice.
 
 **From a ZIP file:**
 
-1. Download the plugin as a ZIP file. The ZIP must contain a single top-level
-   folder named `layout_publisher`.
+1. Download the plugin as a ZIP file from
+   https://plugins.qgis.org/plugins/layout_publisher/. The ZIP must contain a
+   single top-level folder named `layout_publisher`.
 2. In QGIS, open **Plugins → Manage and Install Plugins… → Install from ZIP**
    and select the file.
 
