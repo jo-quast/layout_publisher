@@ -1,8 +1,8 @@
 """Tests for stopping an export in the publish progress dialog.
 
-The panel's ``export_layout`` method is replaced with a fake (see ``fake_export`` below),
-so the tests run fast, write no files, and can "click" Stop while a layout is being
-exported.
+The ``export_layout`` function the panel uses is replaced with a fake (see
+``fake_export`` below), so the tests run fast, write no files, and can "click" Stop
+while a layout is being exported.
 """
 
 import pytest
@@ -25,16 +25,16 @@ def export_dir(panel, tmp_path):
 
 @pytest.fixture
 def fake_export(panel, monkeypatch):
-    """Return a function that replaces ``panel.export_layout`` with a fake export.
+    """Return a function that replaces the panel's ``export_layout`` with a fake export.
 
     A "factory fixture", like ``add_layout``: a test calls it before publishing, e.g.
     ``exported = fake_export(stop_during="A")``. The fake writes no files and reports
-    every layout as exported successfully. monkeypatch restores the real method after
+    every layout as exported successfully. monkeypatch restores the real function after
     the test.
     """
 
     def _fake_export(stop_during=None):
-        """Install the fake export on the panel.
+        """Install the fake export.
 
         Args:
             stop_during (str, optional): Name of the layout during whose export
@@ -48,17 +48,15 @@ def fake_export(panel, monkeypatch):
         exported = []
 
         def export(layout, path, fmt):  # pylint: disable=unused-argument
-            """Stand-in for ``export_layout``: record the layout, maybe click Stop.
-
-            It replaces the method on the panel object only, so it is called
-            without ``self``; the other arguments are those of ``export_layout``.
-            """
+            """Stand-in for ``publisher.export_layout``: record the layout, maybe click Stop."""
             exported.append(layout.name())
             if layout.name() == stop_during:
                 panel._publish_dialog.btn_stop.click()  # pylint: disable=protected-access
             return QgsLayoutExporter.ExportResult.Success
 
-        monkeypatch.setattr(panel, "export_layout", export)
+        # Replace the name where it is used: panel.py imported export_layout into its own
+        # module, so replacing it in publisher.py would not affect the panel
+        monkeypatch.setattr("layout_publisher.panel.export_layout", export)
         return exported
 
     return _fake_export

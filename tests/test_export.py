@@ -1,19 +1,20 @@
-"""Tests for exporting a single layout with ``export_layout``, in every format.
+"""Tests for exporting a single layout with ``publisher.export_layout``, in every format.
 
 Unlike the tests in ``test_stop_export.py``, these run the real QGIS export and write
 files, into pytest's temporary folder ``tmp_path``.
 """
 
 from layout_publisher.export_format import ExportFormat
+from layout_publisher.publisher import export_layout
 from qgis.core import QgsLayoutExporter
 
 
-def test_export_pdf(panel, add_layout, tmp_path):
+def test_export_pdf(add_layout, tmp_path):
     """Exporting a layout as PDF writes a PDF file to the given path."""
     layout = add_layout("Site plan")
     path = tmp_path / "Site plan.pdf"  # tmp_path is a new, empty folder for each test
 
-    result = panel.export_layout(layout, str(path), ExportFormat.PDF)
+    result = export_layout(layout, str(path), ExportFormat.PDF)
 
     assert result == QgsLayoutExporter.ExportResult.Success
     assert path.exists()
@@ -21,12 +22,12 @@ def test_export_pdf(panel, add_layout, tmp_path):
     assert path.read_bytes().startswith(b"%PDF")
 
 
-def test_export_png(panel, add_layout, tmp_path):
+def test_export_png(add_layout, tmp_path):
     """Exporting a layout as PNG writes a PNG file to the given path."""
     layout = add_layout("Site plan")
     path = tmp_path / "Site plan.png"  # tmp_path is a new, empty folder for each test
 
-    result = panel.export_layout(layout, str(path), ExportFormat.PNG)
+    result = export_layout(layout, str(path), ExportFormat.PNG)
 
     assert result == QgsLayoutExporter.ExportResult.Success
     assert path.exists()
@@ -34,12 +35,12 @@ def test_export_png(panel, add_layout, tmp_path):
     assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
 
 
-def test_export_svg(panel, add_layout, tmp_path):
+def test_export_svg(add_layout, tmp_path):
     """Exporting a layout as SVG writes an SVG file to the given path."""
     layout = add_layout("Site plan")
     path = tmp_path / "Site plan.svg"  # tmp_path is a new, empty folder for each test
 
-    result = panel.export_layout(layout, str(path), ExportFormat.SVG)
+    result = export_layout(layout, str(path), ExportFormat.SVG)
 
     assert result == QgsLayoutExporter.ExportResult.Success
     assert path.exists()

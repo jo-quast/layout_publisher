@@ -12,18 +12,8 @@ across sessions and projects.
 """
 
 import os
-import re
 
-from qgis.core import (
-    Qgis,
-    QgsLayoutExporter,
-    QgsLayoutFrame,
-    QgsLayoutItem,
-    QgsLayoutItemMap,
-    QgsLayoutItemPage,
-    QgsProject,
-    QgsSettings,
-)
+from qgis.core import Qgis, QgsLayoutExporter, QgsProject, QgsSettings
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import (
     QAbstractItemView,
@@ -47,6 +37,7 @@ from qgis.utils import iface
 
 from .export_format import ExportFormat
 from .progress_dialog import PublishProgressDialog
+from .publisher import export_layout, export_path, refresh_layout
 from .status_label import StatusLabel
 
 # Keys under which the export folder and format are stored in QgsSettings
@@ -481,9 +472,8 @@ class LayoutPublisherPanel(QDockWidget):
         """Refresh the items of the selected layouts.
 
         Depending on the checkboxes, refreshes the map items, all other items
-        (legends, labels, scale bars, tables, ...) or both. Pages and the frames
-        of tables/HTML items are skipped; tables and HTML items are refreshed
-        once via ``multiFrames()``. A summary, including any errors, is shown
+        (legends, labels, scale bars, tables, ...) or both, using
+        ``publisher.refresh_layout``. A summary, including any errors, is shown
         in the status line.
         """
         selected = self.list_widget.selectedItems()
@@ -508,24 +498,9 @@ class LayoutPublisherPanel(QDockWidget):
                     errors.append(ERROR_NOT_FOUND.format(name=name))
                     continue
                 try:
-                    for item in lyt.items():
-                        # Skip Qt helper graphics, pages and table/HTML frames (tables are refreshed
-                        # via multiFrames)
-                        if not isinstance(item, QgsLayoutItem) or isinstance(
-                            item, (QgsLayoutItemPage, QgsLayoutFrame)
-                        ):
-                            continue
-                        if isinstance(item, QgsLayoutItemMap):
-                            if maps_checked:
-                                item.refresh()
-                                n_maps += 1
-                        elif others_checked:
-                            item.refresh()
-                            n_others += 1
-                    if others_checked:
-                        for item in lyt.multiFrames():
-                            item.refresh()
-                            n_others += 1
+                    layout_maps, layout_others = refresh_layout(lyt, maps_checked, others_checked)
+                    n_maps += layout_maps
+                    n_others += layout_others
                     n_layouts += 1
                 except Exception as e:
                     # Report the failure but keep going with the other layouts
@@ -601,11 +576,8 @@ class LayoutPublisherPanel(QDockWidget):
                 errors.append(ERROR_NOT_FOUND.format(name=name))
                 dialog.set_failed(name, TOOLTIP_NOT_FOUND)
             else:
-                # Replace characters that are not allowed in file names
-                safe_name = re.sub(r'[\\/:*?"<>|]', "_", name).strip() or "layout"
-                path = os.path.join(export_dir, f"{safe_name}.{fmt.extension}")
                 try:
-                    result = self.export_layout(lyt, path, fmt)
+                    result = export_layout(lyt, export_path(export_dir, name, fmt), fmt)
                     if result == QgsLayoutExporter.ExportResult.Success:
                         n_ok += 1
                         dialog.set_done(name)
@@ -628,26 +600,3 @@ class LayoutPublisherPanel(QDockWidget):
         if n_skipped:
             msg += "\n" + MSG_PUBLISH_SKIPPED.format(n_skipped=n_skipped)
         self.status.setText(msg)
-
-    def export_layout(self, layout, path, fmt):
-        """Export a layout to the given path in the given format.
-
-        Args:
-            layout (QgsLayout): The layout to export.
-            path (str): The file path to export to.
-            fmt (ExportFormat): The format to export in.
-
-        Returns:
-            QgsLayoutExporter.ExportResult: The result of the export operation.
-
-        Raises:
-            ValueError: If the format is unsupported.
-        """
-        exporter = QgsLayoutExporter(layout)
-        if fmt == ExportFormat.PDF:
-            return exporter.exportToPdf(path, QgsLayoutExporter.PdfExportSettings())
-        if fmt == ExportFormat.PNG:
-            return exporter.exportToImage(path, QgsLayoutExporter.ImageExportSettings())
-        if fmt == ExportFormat.SVG:
-            return exporter.exportToSvg(path, QgsLayoutExporter.SvgExportSettings())
-        raise ValueError(f"Unsupported format: {fmt.value}")
