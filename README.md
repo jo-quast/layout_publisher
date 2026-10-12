@@ -4,7 +4,8 @@ QGIS plugin that lets the user refresh and publish multiple print layouts at onc
 Instead of opening each print layout, refreshing its maps and exporting it by
 hand, Layout Publisher adds a dockable panel to the QGIS main window. It lists
 all print layouts of the current project. You pick the ones you want, then
-refresh their maps or export them as PDF or PNG into a folder of your choice.
+refresh their maps or export them as PDF, PNG or SVG into a folder of your
+choice.
 
 <img src="docs/panel.png" alt="Layout Publisher panel" width="320">
 </br>
@@ -21,7 +22,7 @@ refresh their maps or export them as PDF or PNG into a folder of your choice.
 - **Rename:** change the name of the selected layout directly from the panel
 - **Refresh:** refresh the map items, the other items (legends, labels, scale
   bars, tables, ...) or both in the selected layouts
-- **Publish:** export the selected layouts as **PDF** or **PNG**
+- **Publish:** export the selected layouts as **PDF**, **PNG** or **SVG**
 - A default **export location** that is remembered between sessions
 - A progress window while publishing, with a green check next to every
   layout that was exported and a red cross (with the error as tooltip) for any
@@ -36,7 +37,7 @@ refresh their maps or export them as PDF or PNG into a folder of your choice.
 
 ## Installation
 
-**From the QGIS Plugin Manager** (once published in the official repository):
+**From the QGIS Plugin Manager:**
 
 1. In QGIS, open **Plugins → Manage and Install Plugins…**
 2. Search for **Layout Publisher** and click **Install Plugin**.
@@ -84,7 +85,7 @@ settings, such as a map’s extent, scale, locked layers or the theme it follows
 
 ### Publishing layouts
 
-3. Choose the export format, **PDF** or **PNG**.
+3. Choose the export format, **PDF**, **PNG** or **SVG**.
 4. Click **Set…** and choose the folder to export to. The button changes to
    **Change…** once a folder is set. The folder and format are remembered.
 5. Click **Publish**. A progress window opens and shows each layout as it is
@@ -104,18 +105,21 @@ The plugin does only what is listed above. Please be aware of the following:
 - **Atlas layouts** are exported like normal layouts, as a single file. There
   is no export of one file per atlas page.
 - **Export settings can't be changed.** Layouts are exported with QGIS's
-  default PDF and image export settings, so resolution follows each layout's
-  own export resolution. There are no options for DPI, compression, metadata
-  or other settings in the panel.
-- **Only PDF and PNG** are supported (no SVG, JPEG, TIFF, ...).
+  default PDF, image and SVG export settings, so resolution follows each
+  layout's own export resolution. There are no options for DPI, compression,
+  metadata or other settings in the panel.
+- **Only PDF, PNG and SVG** are supported (no JPEG, TIFF, ...).
+- **SVG has limits.** SVG can't represent everything a layout can contain
+  (for example some blend modes and effects), and raster content such as
+  basemaps is embedded as images. Check SVG exports before using them.
 - **Existing files are overwritten** without asking if a file with the same
   name is already in the export folder.
 - **File name collisions:** because special characters are replaced with `_`,
   two layouts such as `A/B` and `A:B` would both become `A_B` and the second
   would overwrite the first.
-- **Multi-page layouts** exported as PNG may produce one image per page, with
-  the file naming for additional pages decided by QGIS. This hasn't been
-  tested thoroughly.
+- **Multi-page layouts** exported as PNG or SVG may produce one file per
+  page, with the file naming for additional pages decided by QGIS. This
+  hasn't been tested thoroughly.
 - **Stop takes effect between layouts.** Each layout is exported on QGIS's
   main thread, so QGIS can briefly seem unresponsive while a large layout is
   rendered. The progress window only updates between layouts, and a click on
@@ -141,8 +145,8 @@ These are ideas, not promises, and they are in no particular order:
 
 - Export atlas layouts, one file per atlas page
 - Combine all exported PDFs into one file
-- Settings for export resolution (DPI) and other PDF/PNG options
-- More formats, such as SVG
+- Settings for export resolution (DPI) and other PDF/PNG/SVG options
+- More formats, such as JPEG or TIFF
 - Ask before overwriting, or choose a file name pattern (for example with a
   date or the project name)
 - Keeping the interface responsive while exporting, and stopping during a

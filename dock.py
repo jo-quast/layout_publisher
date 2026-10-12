@@ -4,7 +4,7 @@ The panel lists all print layouts of the current QGIS project and offers two
 actions on the selected layouts:
 
 * **Refresh** - refresh the map items, the other items, or both.
-* **Publish** - export the layouts as PDF or PNG into a default export
+* **Publish** - export the layouts as PDF, PNG or SVG into a default export
   location, showing per-layout progress in a small dialog.
 
 The export folder and format are stored with ``QgsSettings`` so they persist
@@ -661,4 +661,6 @@ class LayoutPublisherDock(QDockWidget):
             return exporter.exportToPdf(path, QgsLayoutExporter.PdfExportSettings())
         if fmt == ExportFormat.PNG:
             return exporter.exportToImage(path, QgsLayoutExporter.ImageExportSettings())
+        if fmt == ExportFormat.SVG:
+            return exporter.exportToSvg(path, QgsLayoutExporter.SvgExportSettings())
         raise ValueError(f"Unsupported format: {fmt.value}")

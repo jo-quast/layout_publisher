@@ -32,3 +32,16 @@ def test_export_png(panel, add_layout, tmp_path):
     assert path.exists()
     # Every PNG file starts with the same 8 bytes, so this checks it really is a PNG
     assert path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n")
+
+
+def test_export_svg(panel, add_layout, tmp_path):
+    """Exporting a layout as SVG writes an SVG file to the given path."""
+    layout = add_layout("Site plan")
+    path = tmp_path / "Site plan.svg"  # tmp_path is a new, empty folder for each test
+
+    result = panel.export_layout(layout, str(path), ExportFormat.SVG)
+
+    assert result == QgsLayoutExporter.ExportResult.Success
+    assert path.exists()
+    # Every SVG file contains an "<svg>" tag, so this checks it really is an SVG
+    assert b"<svg" in path.read_bytes()

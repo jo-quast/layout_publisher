@@ -11,6 +11,7 @@ class ExportFormat(Enum):
 
     PDF = "PDF"
     PNG = "PNG"
+    SVG = "SVG"
 
     @property
     def extension(self):
