@@ -44,13 +44,17 @@ refresh their maps or export them as PDF or PNG into a folder of your choice.
 2. In QGIS, open **Plugins → Manage and Install Plugins… → Install from ZIP**
    and select the file.
 
-On macOS, don't create the ZIP with Finder's "Compress" command. It adds a
-`__MACOSX` folder that QGIS tries to load as a plugin. Create it from the
-terminal instead:
+To create the ZIP yourself, run this in the repository folder:
 
 ```bash
-zip -r layout_publisher.zip layout_publisher -x "*.DS_Store" -x "__MACOSX/*" -x "*/CLAUDE.md" -x "*/pyproject.toml"
+git archive --format=zip --prefix=layout_publisher/ -o layout_publisher.zip HEAD
 ```
+
+It packs the plugin as of the last commit into a `layout_publisher` folder and
+leaves out everything that isn't needed to run it (tests, docs, git and editor
+files; see `export-ignore` in `.gitattributes`). Don't use Finder's
+"Compress" command on macOS: it adds a `__MACOSX` folder that QGIS tries to
+load as a plugin, and it would include all of those files.
 
 ## Usage
 
@@ -153,7 +157,31 @@ any error text shown in the panel or in the Python console
 (**Plugins → Python Console**) or the **Log Messages** panel.
 
 Pull requests are welcome. Please keep the code PEP 8 compliant (maximum line
-length 100) and add docstrings for new classes and methods.
+length 100), add docstrings for new classes and methods, and add or update
+tests for your changes.
+
+### Running the tests
+
+The tests use [pytest](https://pytest.org) and
+[pytest-qgis](https://github.com/GispoCoding/pytest-qgis). They need QGIS's
+own Python, because the `qgis` module ships with QGIS and can't be installed
+with pip. Install the two packages into it once:
+
+```bash
+/Applications/QGIS.app/Contents/MacOS/python -m pip install --user pytest pytest-qgis
+```
+
+Then run the tests from the repository folder:
+
+```bash
+/Applications/QGIS.app/Contents/MacOS/python -m pytest
+```
+
+These paths are for macOS. On Windows and Linux, use the Python that comes
+with your QGIS installation instead (on Windows, for example, from the
+OSGeo4W Shell). The tests run QGIS without a window, so QGIS doesn't need to
+be open. The repository folder must be named `layout_publisher`, because the
+tests import the plugin under that name.
 
 ## Development
 

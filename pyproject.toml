@@ -5,3 +5,17 @@ line-length = 100
 # qgis and PyQt5 are compiled C extensions Pylint can't read; don't check names imported
 # from them (loading them with extension-pkg-allow-list made Pylint hang in VS Code)
 ignored-modules = ["qgis", "PyQt5"]
+# Tests import the plugin as `layout_publisher.…` (pytest finds it via `pythonpath` below);
+# put the folder containing this repo on Pylint's path too
+init-hook = """
+import os, sys
+from pylint.config import find_default_config_files
+sys.path.insert(0, os.path.dirname(os.path.dirname(next(find_default_config_files()))))
+"""
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The repo folder is the `layout_publisher` package; its parent must be importable
+pythonpath = [".."]
+# Run QGIS headless (no windows); pytest-qgis then also uses a stub iface
+qgis_gui_enabled = false
