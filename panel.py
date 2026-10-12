@@ -117,6 +117,7 @@ class LayoutPublisherPanel(QDockWidget):
         self.setWidget(body)
 
         self.refresh_dir_display()
+        self.update_selection_buttons()
 
     # ---------- building the panel ----------
 
@@ -128,12 +129,14 @@ class LayoutPublisherPanel(QDockWidget):
         """
         list_widget = self.layout_list.list_widget
         row = QHBoxLayout()
-        btn_all = QPushButton("All")
-        btn_none = QPushButton("None")
-        btn_all.clicked.connect(list_widget.selectAll)
-        btn_none.clicked.connect(list_widget.clearSelection)
-        row.addWidget(btn_all)
-        row.addWidget(btn_none)
+        self.btn_all = QPushButton("All")
+        self.btn_none = QPushButton("None")
+        self.btn_all.clicked.connect(list_widget.selectAll)
+        self.btn_none.clicked.connect(list_widget.clearSelection)
+        self.layout_list.populated.connect(self.update_selection_buttons)
+
+        row.addWidget(self.btn_all)
+        row.addWidget(self.btn_none)
 
         self.btn_rename = QPushButton("Rename…")
         self.btn_rename.setToolTip("Rename the selected layout (select exactly one)")
@@ -247,6 +250,18 @@ class LayoutPublisherPanel(QDockWidget):
             self.show_error(f"Layout '{name}' not found.")
             return
         iface.openLayoutDesigner(lyt)
+
+    def update_selection_buttons(self):
+        """Enable the All / None buttons only when the layout list isn't empty.
+
+        Connected to ``LayoutList.populated``, and called once in ``__init__``, because
+        the list is first filled before this connection exists.
+        """
+        enabled = False
+        if not self.layout_list.is_empty():
+            enabled = True
+        self.btn_all.setEnabled(enabled)
+        self.btn_none.setEnabled(enabled)
 
     def update_rename_button(self):
         """Enable the Rename button only when exactly one layout is selected."""

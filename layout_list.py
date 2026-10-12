@@ -1,7 +1,7 @@
 """The list of the project's print layouts at the top of the Layout Publisher panel."""
 
 from qgis.core import QgsProject
-from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtCore import Qt, pyqtSignal
 from qgis.PyQt.QtWidgets import (
     QAbstractItemView,
     QLabel,
@@ -41,8 +41,11 @@ class LayoutList(QWidget):
     added, removed or renamed, or another project is opened. It holds only the
     layouts' names; whoever acts on a layout looks it up again by name.
 
-    The panel connects to ``list_widget`` for the selection and double-clicks.
+    The panel connects to ``list_widget`` for the selection and double-clicks, and to
+    ``populated``, which is emitted after each refresh of the list.
     """
+
+    populated = pyqtSignal()
 
     def __init__(self, parent=None):
         """Build the widgets, connect the project signals and fill the list.
@@ -51,25 +54,25 @@ class LayoutList(QWidget):
             parent (QWidget, optional): Parent widget.
         """
         super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        box_layout = QVBoxLayout(self)
+        box_layout.setContentsMargins(0, 0, 0, 0)
 
         self.hint_label = QLabel("Select layouts (double-click to open layout designer):")
         self.hint_label.setWordWrap(True)
-        layout.addWidget(self.hint_label)
+        box_layout.addWidget(self.hint_label)
 
         # Multi-selection list; shared by the Refresh and Publish actions
         self.list_widget = QListWidget()
         self.list_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.list_widget.setToolTip("Double-click a layout to open it in the layout designer")
-        layout.addWidget(self.list_widget)
+        box_layout.addWidget(self.list_widget)
 
         # Shown instead of the list when there are no layouts to list
         self.empty_label = QLabel()
         self.empty_label.setWordWrap(True)
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_label.hide()
-        layout.addWidget(self.empty_label, 1)  # stretch: takes the list's space
+        box_layout.addWidget(self.empty_label, 1)  # stretch: takes the list's space
 
         self._connect_signals()
         self.populate()
@@ -141,6 +144,16 @@ class LayoutList(QWidget):
             self.show_empty_message(MSG_NO_LAYOUTS)
         else:
             self.show_empty_message(MSG_NO_PROJECT)
+
+        self.populated.emit()
+
+    def is_empty(self):
+        """Return whether the list is empty.
+
+        Returns:
+            bool: True if there are no layouts to list.
+        """
+        return self.list_widget.count() == 0
 
     def show_empty_message(self, text):
         """Show ``text`` in place of the list, or the list if ``text`` is empty.
