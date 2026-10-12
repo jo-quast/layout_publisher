@@ -144,7 +144,6 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_rename.setEnabled(False)  # only enabled when exactly one layout is selected
         self.btn_rename.clicked.connect(self.rename_layout)
         list_widget.itemSelectionChanged.connect(self.update_rename_button)
-        list_widget.itemSelectionChanged.connect(self.update_refresh_button)
         row.addStretch()
         row.addWidget(self.btn_rename)
         return row
@@ -269,8 +268,8 @@ class LayoutPublisherPanel(QDockWidget):
     def update_refresh_button(self):
         """Enable the Refresh button only if an option is checked.
 
-        Connected to the list's selection and to both refresh checkboxes; ``toggled``
-        passes the new state, which is ignored here.
+        Connected to both refresh checkboxes, and called once in ``__init__`` for the
+        starting state; ``toggled`` passes the new state, which is ignored here.
         """
         is_enabled = self.chk_refresh_maps.isChecked() or self.chk_refresh_other.isChecked()
         self.btn_refresh.setEnabled(is_enabled)
