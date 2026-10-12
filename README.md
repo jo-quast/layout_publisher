@@ -15,6 +15,10 @@ refresh their maps or export them as PDF or PNG into a folder of your choice.
 - Dockable panel listing all print layouts of the current project, kept in sync
   when layouts are added, renamed or removed, or another project is opened
 - Multi-selection, plus **All** / **None** buttons
+- A message in place of the list when there are no layouts, or no project is
+  open
+- Double-click a layout to open it in the layout designer
+- **Rename:** change the name of the selected layout directly from the panel
 - **Refresh:** refresh the map items, the other items (legends, labels, scale
   bars, tables, ...) or both in the selected layouts
 - **Publish:** export the selected layouts as **PDF** or **PNG**
@@ -22,8 +26,6 @@ refresh their maps or export them as PDF or PNG into a folder of your choice.
 - A progress window while publishing, with a green check next to every
   layout that was exported and a red cross (with the error as tooltip) for any
   that failed
-
-- **Rename:** Change the name of individual layouts directly from the panel
 
 ## Requirements
 
@@ -91,8 +93,7 @@ aren't allowed in file names (`\ / : * ? " < > |`) are replaced with `_`.
 
 ## Known limitations
 
-This is a first release, and it does only what is listed above. Please be
-aware of the following:
+The plugin does only what is listed above. Please be aware of the following:
 
 - **Atlas layouts** are exported like normal layouts, as a single file. There
   is no export of one file per atlas page.
@@ -114,7 +115,7 @@ aware of the following:
   window only updates between layouts, and it can't be closed until the
   export has finished.
 - **Refresh doesn’t change map settings.** Maps are redrawn as they are set up
-  in the layout designer. Their extent isn’t synced with the main map canvas, 
+  in the layout designer. Their extent isn’t synced with the main map canvas,
   and their scale, locked layers and followed theme stay as they are.
 - **Print layouts only.** QGIS *reports* are not supported. If your project
   contains reports they may appear in the list and will give an error when
