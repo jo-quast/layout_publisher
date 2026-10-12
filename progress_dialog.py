@@ -148,10 +148,11 @@ class PublishProgressDialog(QDialog):
         self.progress.setValue(self.progress.value() + 1)
 
     def finish(self, n_ok, n_failed, n_skipped):
-        """Show the summary and allow the dialog to be closed.
+        """Show the summary, fill the progress bar and allow the dialog to be closed.
 
-        Replaces the Stop button with Close, which becomes the default
-        button (activated by Enter).
+        The bar is filled even if layouts were skipped, so it shows that the
+        export is over. Replaces the Stop button with Close, which becomes the
+        default button (activated by Enter).
 
         Args:
             n_ok (int): Number of layouts exported successfully.
@@ -166,6 +167,7 @@ class PublishProgressDialog(QDialog):
         if n_skipped:
             text += MSG_SUMMARY_SKIPPED.format(n_skipped=n_skipped)
         self.header.setText(text)
+        self.progress.setValue(self.progress.maximum())
         self.btn_stop.setVisible(False)
         self.btn_close.setVisible(True)
         self.btn_close.setDefault(True)
