@@ -46,6 +46,7 @@ from qgis.PyQt.QtWidgets import (
 )
 from qgis.utils import iface
 
+from .export_format import ExportFormat
 from .progress_dialog import PublishProgressDialog
 
 # Keys under which the export folder and format are stored in QgsSettings
@@ -261,13 +262,17 @@ class LayoutPublisherDock(QDockWidget):
         fmt_row = QHBoxLayout()
         fmt_row.addWidget(QLabel("Format:"))
         self.format_combo = QComboBox()
-        self.format_combo.addItems(["PDF", "PNG"])
-        # Restore the last used format, falling back to PDF
-        saved_fmt = self.settings.value(SETTINGS_FORMAT, "PDF")
-        idx = self.format_combo.findText(str(saved_fmt))
-        self.format_combo.setCurrentIndex(max(idx, 0))
-        self.format_combo.currentTextChanged.connect(
-            lambda t: self.settings.setValue(SETTINGS_FORMAT, t)
+        for fmt in ExportFormat:
+            # Show the format's name; keep the ExportFormat itself as the item's data
+            self.format_combo.addItem(fmt.value, fmt)
+        # Restore the last used format, falling back to PDF if none or an unknown one is saved
+        try:
+            saved_fmt = ExportFormat(self.settings.value(SETTINGS_FORMAT, ExportFormat.PDF.value))
+        except ValueError:
+            saved_fmt = ExportFormat.PDF
+        self.format_combo.setCurrentIndex(self.format_combo.findText(saved_fmt.value))
+        self.format_combo.currentIndexChanged.connect(
+            lambda: self.settings.setValue(SETTINGS_FORMAT, self.format_combo.currentData().value)
         )
         fmt_row.addWidget(self.format_combo, 1)
         box_layout.addLayout(fmt_row)
@@ -560,7 +565,7 @@ class LayoutPublisherDock(QDockWidget):
 
         Shows an error if no export folder is set (or it no longer exists)
         and nothing is exported. Otherwise a progress dialog is opened and
-        each layout is exported as ``<layout name>.<pdf|png>``; existing
+        each layout is exported as ``<layout name>.<extension>``; existing
         files with the same name are overwritten.
 
         The user can stop the export in the progress dialog. The layout being
@@ -581,7 +586,7 @@ class LayoutPublisherDock(QDockWidget):
             self.status.setText("Please select at least one layout.")
             return
 
-        fmt = self.format_combo.currentText()
+        fmt = self.format_combo.currentData()
         names = [i.text() for i in selected]
         manager = QgsProject.instance().layoutManager()
         n_ok = 0
@@ -611,7 +616,7 @@ class LayoutPublisherDock(QDockWidget):
             else:
                 # Replace characters that are not allowed in file names
                 safe_name = re.sub(r'[\\/:*?"<>|]', "_", name).strip() or "layout"
-                path = os.path.join(export_dir, f"{safe_name}.{fmt.lower()}")
+                path = os.path.join(export_dir, f"{safe_name}.{fmt.extension}")
                 try:
                     result = self.export_layout(lyt, path, fmt)
                     if result == QgsLayoutExporter.ExportResult.Success:
@@ -630,7 +635,7 @@ class LayoutPublisherDock(QDockWidget):
 
         dialog.finish(n_ok, len(errors), n_skipped)
 
-        msg = f"Published {n_ok} layout(s) as {fmt} to {export_dir}."
+        msg = f"Published {n_ok} layout(s) as {fmt.value} to {export_dir}."
         if errors:
             msg += "\nErrors: " + "; ".join(errors)
         if n_skipped:
@@ -643,7 +648,7 @@ class LayoutPublisherDock(QDockWidget):
         Args:
             layout (QgsLayout): The layout to export.
             path (str): The file path to export to.
-            fmt (str): The format to export in, either "PDF" or "PNG".
+            fmt (ExportFormat): The format to export in.
 
         Returns:
             QgsLayoutExporter.ExportResult: The result of the export operation.
@@ -652,8 +657,8 @@ class LayoutPublisherDock(QDockWidget):
             ValueError: If the format is unsupported.
         """
         exporter = QgsLayoutExporter(layout)
-        if fmt == "PDF":
+        if fmt == ExportFormat.PDF:
             return exporter.exportToPdf(path, QgsLayoutExporter.PdfExportSettings())
-        if fmt == "PNG":
+        if fmt == ExportFormat.PNG:
             return exporter.exportToImage(path, QgsLayoutExporter.ImageExportSettings())
-        raise ValueError(f"Unsupported format: {fmt}")
+        raise ValueError(f"Unsupported format: {fmt.value}")

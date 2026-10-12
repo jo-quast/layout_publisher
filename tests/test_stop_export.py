@@ -7,6 +7,7 @@ exported.
 
 import pytest
 from layout_publisher.dock import SETTINGS_DIR
+from layout_publisher.export_format import ExportFormat
 from qgis.core import QgsLayoutExporter
 
 
@@ -18,7 +19,7 @@ def export_dir(panel, tmp_path):
     ``tmp_path`` is a pytest fixture: a new temporary folder for each test.
     """
     panel.settings.setValue(SETTINGS_DIR, str(tmp_path))
-    panel.format_combo.setCurrentText("PDF")
+    panel.format_combo.setCurrentText(ExportFormat.PDF.value)
     return tmp_path
 
 

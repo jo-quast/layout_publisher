@@ -36,7 +36,7 @@ class PublishProgressDialog(QDialog):
 
         Args:
             names (list[str]): Names of the layouts that will be exported.
-            fmt (str): Export format shown in the header ("PDF" or "PNG").
+            fmt (ExportFormat): Export format shown in the header.
             export_dir (str): Target folder, shown below the header.
             parent (QWidget, optional): Parent widget, usually the QGIS
                 main window.
@@ -51,7 +51,7 @@ class PublishProgressDialog(QDialog):
 
         layout = QVBoxLayout(self)
 
-        self.header = QLabel(f"Exporting {len(names)} layout(s) as {fmt}…")
+        self.header = QLabel(f"Exporting {len(names)} layout(s) as {fmt.value}…")
         self.header.setWordWrap(True)
         layout.addWidget(self.header)
 
