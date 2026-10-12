@@ -1,4 +1,4 @@
-"""Dock panel for Layout Publisher.
+"""The Layout Publisher panel, docked in the QGIS main window.
 
 The panel lists all print layouts of the current QGIS project and offers two
 actions on the selected layouts:
@@ -154,7 +154,7 @@ class StatusLabel(QWidget):
         self.setText("")
 
 
-class LayoutPublisherDock(QDockWidget):
+class LayoutPublisherPanel(QDockWidget):
     """Dockable panel to refresh and publish the project's print layouts.
 
     The layout list stays in sync with the project: it is refreshed whenever
@@ -169,7 +169,10 @@ class LayoutPublisherDock(QDockWidget):
                 main window.
         """
         super().__init__("Layout Publisher", parent)
-        self.setObjectName("LayoutPublisherDock")  # lets QGIS remember its position
+        # QGIS saves the panel's position and visibility under this name. Keep it unchanged
+        # (it dates from when the class was called LayoutPublisherDock), or users' panels
+        # would go back to the default position after an update.
+        self.setObjectName("LayoutPublisherDock")
         self.settings = QgsSettings()
         self._publish_dialog = None  # reference so the dialog isn't garbage-collected
 

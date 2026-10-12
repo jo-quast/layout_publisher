@@ -2,7 +2,7 @@
 
 from helpers import listed_layouts, shown_message
 
-from layout_publisher.dock import MSG_NO_LAYOUTS, MSG_NO_PROJECT
+from layout_publisher.panel import MSG_NO_LAYOUTS, MSG_NO_PROJECT
 
 
 def test_untouched_project_asks_to_open_a_project(panel):

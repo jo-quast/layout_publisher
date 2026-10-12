@@ -11,7 +11,7 @@ below. Fixtures can request other fixtures the same way.
 """
 
 import pytest
-from layout_publisher.dock import LayoutPublisherDock
+from layout_publisher.panel import LayoutPublisherPanel
 from qgis.core import QgsPrintLayout
 
 
@@ -35,7 +35,7 @@ def panel(project):  # pylint: disable=unused-argument
     Everything before ``yield`` runs before the test, everything after it runs
     after the test, even if the test failed.
     """
-    new_panel = LayoutPublisherDock()
+    new_panel = LayoutPublisherPanel()
     yield new_panel  # the test runs here
     new_panel.disconnect_signals()
     new_panel.deleteLater()

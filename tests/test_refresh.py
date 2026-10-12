@@ -1,7 +1,7 @@
 """Tests for the Refresh group: the Refresh button state and which items get refreshed."""
 
 import pytest
-from layout_publisher.dock import (
+from layout_publisher.panel import (
     MSG_REFRESHED,
     MSG_REFRESHED_MAPS,
     MSG_REFRESHED_OTHERS,

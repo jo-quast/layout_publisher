@@ -9,7 +9,7 @@ import os
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QIcon
 
-from .dock import LayoutPublisherDock
+from .panel import LayoutPublisherPanel
 
 
 class LayoutPublisherPlugin:
@@ -26,19 +26,19 @@ class LayoutPublisherPlugin:
                 window, menus, toolbars and message bar.
         """
         self.iface = iface
-        self.dock = None
+        self.panel = None
         self.action = None
 
     def initGui(self):
-        """Create the dock panel and add its toggle action to QGIS.
+        """Create the panel and add its toggle action to QGIS.
 
         Called by QGIS after the plugin has been loaded.
         """
-        self.dock = LayoutPublisherDock(self.iface.mainWindow())
-        self.iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.dock)
+        self.panel = LayoutPublisherPanel(self.iface.mainWindow())
+        self.iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.panel)
 
-        # The dock's built-in toggle action shows/hides the panel
-        self.action = self.dock.toggleViewAction()
+        # The panel's built-in toggle action (from QDockWidget) shows/hides it
+        self.action = self.panel.toggleViewAction()
         self.action.setText("Layout Publisher")
         icon_path = os.path.join(os.path.dirname(__file__), "icon.svg")
         self.action.setIcon(QIcon(icon_path))
@@ -46,7 +46,7 @@ class LayoutPublisherPlugin:
         self.iface.addToolBarIcon(self.action)
 
     def unload(self):
-        """Remove the menu entry, toolbar button and dock panel.
+        """Remove the menu entry, toolbar button and panel.
 
         Called by QGIS when the plugin is disabled or QGIS shuts down.
         """
@@ -54,10 +54,10 @@ class LayoutPublisherPlugin:
             self.iface.removePluginMenu(self.MENU, self.action)
             self.iface.removeToolBarIcon(self.action)
             self.action = None
-        if self.dock is not None:
+        if self.panel is not None:
             # Disconnect project signals first so no callbacks reach a
             # widget that is about to be deleted.
-            self.dock.disconnect_signals()
-            self.iface.removeDockWidget(self.dock)
-            self.dock.deleteLater()
-            self.dock = None
+            self.panel.disconnect_signals()
+            self.iface.removeDockWidget(self.panel)
+            self.panel.deleteLater()
+            self.panel = None

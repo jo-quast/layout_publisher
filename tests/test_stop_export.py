@@ -6,7 +6,7 @@ exported.
 """
 
 import pytest
-from layout_publisher.dock import MSG_PUBLISH_SKIPPED, MSG_PUBLISHED, SETTINGS_DIR
+from layout_publisher.panel import MSG_PUBLISH_SKIPPED, MSG_PUBLISHED, SETTINGS_DIR
 from layout_publisher.export_format import ExportFormat
 from qgis.core import QgsLayoutExporter
 
