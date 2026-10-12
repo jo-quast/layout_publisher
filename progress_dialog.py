@@ -23,8 +23,12 @@ class PublishProgressDialog(QDialog):
     """Modal dialog showing the export progress, one row per layout.
 
     Each row has a status mark: a grey dot while waiting, an amber ellipsis
-    while exporting, a green check once exported, or a red cross on failure.
-    The dialog cannot be closed while an export is running.
+    while exporting, a green check once exported, a red cross on failure, or
+    a grey dash if the export was cancelled before the layout's turn.
+
+    While an export is running, the Cancel button, Esc and the window's close
+    button (X) cancel it after the current layout instead of closing the
+    dialog. Once the export has finished, Cancel is replaced by Close.
     """
 
     def __init__(self, names, fmt, export_dir, parent=None):
@@ -43,6 +47,7 @@ class PublishProgressDialog(QDialog):
         self.setMinimumWidth(380)
         self._running = True
         self._rows = {}
+        self.cancelled = False  # set by request_cancel(); checked by the export loop
 
         layout = QVBoxLayout(self)
 
@@ -82,9 +87,13 @@ class PublishProgressDialog(QDialog):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
+        self.btn_cancel = QPushButton("Cancel")
+        self.btn_cancel.clicked.connect(self.request_cancel)
+        self.btn_cancel.setAutoDefault(False)
         self.btn_close = QPushButton("Close")
-        self.btn_close.setEnabled(False)
+        self.btn_close.setVisible(False)
         self.btn_close.clicked.connect(self.accept)
+        btn_row.addWidget(self.btn_cancel)
         btn_row.addWidget(self.btn_close)
         layout.addLayout(btn_row)
 
@@ -115,33 +124,56 @@ class PublishProgressDialog(QDialog):
         """Mark a layout as failed (red cross), with the error as tooltip."""
         self._set_mark(name, "✗", COLOR_FAIL, message)
 
+    def set_cancelled(self, name):
+        """Mark a layout as not exported because of a cancel (grey dash), with a tooltip."""
+        self._set_mark(name, "–", COLOR_PENDING, "Cancelled by user")
+
     def advance(self):
         """Advance the progress bar by one finished layout."""
         self.progress.setValue(self.progress.value() + 1)
 
-    def finish(self, n_ok, n_failed):
+    def finish(self, n_ok, n_failed, n_cancelled):
         """Show the summary and allow the dialog to be closed.
+
+        Replaces the Cancel button with Close, which becomes the default
+        button (activated by Enter).
 
         Args:
             n_ok (int): Number of layouts exported successfully.
             n_failed (int): Number of layouts that failed.
+            n_cancelled (int): Number of layouts skipped because the export
+                was cancelled.
         """
         self._running = False
         text = f"Done: {n_ok} exported"
         if n_failed:
             text += f", {n_failed} failed (hover over ✗ for details)"
+        if n_cancelled:
+            text += f", {n_cancelled} cancelled"
         self.header.setText(text)
-        self.btn_close.setEnabled(True)
+        self.btn_cancel.setVisible(False)
+        self.btn_close.setVisible(True)
+        self.btn_close.setDefault(True)
 
-    # Don't allow closing while an export is still running
-    def closeEvent(self, event):
-        """Ignore close requests (window X) while an export is running."""
-        if self._running:
-            event.ignore()
-        else:
-            super().closeEvent(event)
+    def request_cancel(self):
+        """Ask the export to stop after the current layout.
+
+        Connected to the Cancel button, and called by ``reject()`` for Esc and
+        the window's close button. Sets ``cancelled``, which the export loop
+        checks before each layout, and disables the button so it can't be
+        clicked twice.
+        """
+        self.cancelled = True
+        self.header.setText("Cancelling after the current layout…")
+        self.btn_cancel.setEnabled(False)
 
     def reject(self):
-        """Ignore Esc while an export is running; otherwise close normally."""
-        if not self._running:
+        """Cancel the export while it is running, otherwise close the dialog.
+
+        Qt calls this when the user presses Esc, and QDialog's closeEvent calls
+        it when the window's close button (X) is clicked.
+        """
+        if self._running:
+            self.request_cancel()
+        else:
             super().reject()

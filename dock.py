@@ -556,13 +556,17 @@ class LayoutPublisherDock(QDockWidget):
         self.status.setText(msg)
 
     def publish_layouts(self):
-        """Export the selected layouts to the export folder as PDF or PNG.
+        """Export the selected layouts to the export folder in the selected format.
 
         Shows an error if no export folder is set (or it no longer exists)
         and nothing is exported. Otherwise a progress dialog is opened and
         each layout is exported as ``<layout name>.<pdf|png>``; existing
-        files with the same name are overwritten. A summary, including any
-        errors, is shown in the status line afterwards.
+        files with the same name are overwritten.
+
+        The user can cancel in the progress dialog. The layout being exported
+        is finished first (the export can't be interrupted), and the remaining
+        layouts are marked as cancelled and skipped. A summary, including any
+        errors and cancelled layouts, is shown in the status line afterwards.
         """
         export_dir = self.export_dir()
         if not export_dir:
@@ -581,6 +585,7 @@ class LayoutPublisherDock(QDockWidget):
         names = [i.text() for i in selected]
         manager = QgsProject.instance().layoutManager()
         n_ok = 0
+        n_cancelled = 0
         errors = []
 
         dialog = PublishProgressDialog(names, fmt, export_dir, iface.mainWindow())
@@ -591,6 +596,11 @@ class LayoutPublisherDock(QDockWidget):
         QApplication.processEvents()
 
         for name in names:
+            if dialog.cancelled:
+                dialog.set_cancelled(name)
+                n_cancelled += 1
+                continue
+
             dialog.set_running(name)
             QApplication.processEvents()
 
@@ -603,13 +613,7 @@ class LayoutPublisherDock(QDockWidget):
                 safe_name = re.sub(r'[\\/:*?"<>|]', "_", name).strip() or "layout"
                 path = os.path.join(export_dir, f"{safe_name}.{fmt.lower()}")
                 try:
-                    exporter = QgsLayoutExporter(lyt)
-                    if fmt == "PDF":
-                        result = exporter.exportToPdf(path, QgsLayoutExporter.PdfExportSettings())
-                    else:
-                        result = exporter.exportToImage(
-                            path, QgsLayoutExporter.ImageExportSettings()
-                        )
+                    result = self.export_layout(lyt, path, fmt)
                     if result == QgsLayoutExporter.ExportResult.Success:
                         n_ok += 1
                         dialog.set_done(name)
@@ -624,9 +628,33 @@ class LayoutPublisherDock(QDockWidget):
             dialog.advance()
             QApplication.processEvents()
 
-        dialog.finish(n_ok, len(errors))
+        dialog.finish(n_ok, len(errors), n_cancelled)
 
         msg = f"Published {n_ok} layout(s) as {fmt} to {export_dir}."
         if errors:
             msg += "\nErrors: " + "; ".join(errors)
+        if n_cancelled:
+            msg += f"\n{n_cancelled} layouts cancelled."
         self.status.setText(msg)
+
+    def export_layout(self, layout, path, fmt):
+        """Export a layout to the given path in the given format.
+
+        Args:
+            layout (QgsLayout): The layout to export.
+            path (str): The file path to export to.
+            fmt (str): The format to export in, either "PDF" or "PNG".
+
+        Returns:
+            QgsLayoutExporter.ExportResult: The result of the export operation.
+
+        Raises:
+            ValueError: If the format is unsupported.
+        """
+        exporter = QgsLayoutExporter(layout)
+        if fmt == "PDF":
+            return exporter.exportToPdf(path, QgsLayoutExporter.PdfExportSettings())
+        elif fmt == "PNG":
+            return exporter.exportToImage(path, QgsLayoutExporter.ImageExportSettings())
+        else:
+            raise ValueError(f"Unsupported format: {fmt}")

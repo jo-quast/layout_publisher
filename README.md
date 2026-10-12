@@ -26,6 +26,8 @@ refresh their maps or export them as PDF or PNG into a folder of your choice.
 - A progress window while publishing, with a green check next to every
   layout that was exported and a red cross (with the error as tooltip) for any
   that failed
+- **Cancel** an export from the progress window; the remaining layouts are
+  skipped
 
 ## Requirements
 
@@ -88,6 +90,10 @@ settings, such as a map’s extent, scale, locked layers or the theme it follows
 5. Click **Publish**. A progress window opens and shows each layout as it is
    exported. When it says *Done*, click **Close**.
 
+To stop an export, click **Cancel** in the progress window (or press Esc). The
+layout that is currently being exported is finished first; the remaining
+layouts are skipped and marked with a grey dash.
+
 Files are named after the layout, for example `Site plan.pdf`. Characters that
 aren't allowed in file names (`\ / : * ? " < > |`) are replaced with `_`.
 
@@ -110,10 +116,10 @@ The plugin does only what is listed above. Please be aware of the following:
 - **Multi-page layouts** exported as PNG may produce one image per page, with
   the file naming for additional pages decided by QGIS. This hasn't been
   tested thoroughly.
-- **No cancel button.** Each layout is exported on QGIS's main thread, so QGIS
-  can briefly seem unresponsive while a large layout is rendered. The progress
-  window only updates between layouts, and it can't be closed until the
-  export has finished.
+- **Cancel takes effect between layouts.** Each layout is exported on QGIS's
+  main thread, so QGIS can briefly seem unresponsive while a large layout is
+  rendered. The progress window only updates between layouts, and a click on
+  Cancel stops the export only after the current layout has finished.
 - **Refresh doesn’t change map settings.** Maps are redrawn as they are set up
   in the layout designer. Their extent isn’t synced with the main map canvas,
   and their scale, locked layers and followed theme stay as they are.
@@ -139,7 +145,8 @@ These are ideas, not promises, and they are in no particular order:
 - More formats, such as SVG
 - Ask before overwriting, or choose a file name pattern (for example with a
   date or the project name)
-- A cancel button, and keeping the interface responsive while exporting
+- Keeping the interface responsive while exporting, and cancelling during a
+  layout's export
 - Store the export location per project
 - Set up a folder structure for exported layouts
 - Support for QGIS reports
