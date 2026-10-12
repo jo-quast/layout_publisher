@@ -54,28 +54,21 @@ def set_options(panel, maps, other):
 # ---------- Refresh button state ----------
 
 
+@pytest.mark.parametrize(
+    ("maps", "other", "expected_button_enabled"),
+    [
+        (True, True, True),
+        (True, False, True),
+        (False, True, True),
+        (False, False, False),
+    ],
+)
 @pytest.mark.usefixtures("layout")  # the layout must exist, but isn't used directly
-def test_refresh_button_disabled_without_selection(panel):
-    """With no layout selected there is nothing to refresh, so Refresh is disabled."""
-    assert not panel.btn_refresh.isEnabled()
+def test_refresh_button_states(panel, maps, other, expected_button_enabled):
+    """Refresh is enabled when at least one option is ticked, without needing a selection."""
+    set_options(panel, maps=maps, other=other)
 
-
-@pytest.mark.usefixtures("layout")  # the layout must exist, but isn't used directly
-def test_refresh_button_enabled_with_selection(panel):
-    """Selecting a layout (with both options ticked by default) enables Refresh."""
-    select_all(panel)
-
-    assert panel.btn_refresh.isEnabled()
-
-
-@pytest.mark.usefixtures("layout")  # the layout must exist, but isn't used directly
-def test_refresh_button_disabled_without_options(panel):
-    """Unticking both Maps and Other items disables Refresh, even with a layout selected."""
-    select_all(panel)
-
-    set_options(panel, maps=False, other=False)
-
-    assert not panel.btn_refresh.isEnabled()
+    assert panel.btn_refresh.isEnabled() == expected_button_enabled
 
 
 # ---------- refreshed items ----------

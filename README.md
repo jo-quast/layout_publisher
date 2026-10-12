@@ -74,7 +74,7 @@ load as a plugin, and it would include all of those files.
 3. Choose what to refresh: **Maps**, **Other items** (legends, labels, scale
    bars, tables, ...) or both. Refreshing maps can take a while for large
    layouts; the other items are quick. The **Refresh** button is only enabled
-   when at least one layout is selected and at least one option is ticked.
+   when at least one option is ticked.
 4. Click **Refresh**. A summary appears below the panel, for example
    *"Refreshed 6 map(s) and 14 other item(s) in 3 layout(s)."*
 

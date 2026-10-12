@@ -118,6 +118,7 @@ class LayoutPublisherPanel(QDockWidget):
 
         self.refresh_dir_display()
         self.update_selection_buttons()
+        self.update_refresh_button()
 
     # ---------- building the panel ----------
 
@@ -266,14 +267,12 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_rename.setEnabled(len(self.layout_list.selected_names()) == 1)
 
     def update_refresh_button(self):
-        """Enable the Refresh button only if a layout is selected and an option is checked.
+        """Enable the Refresh button only if an option is checked.
 
         Connected to the list's selection and to both refresh checkboxes; ``toggled``
         passes the new state, which is ignored here.
         """
-        is_enabled = bool(self.layout_list.selected_names()) and (
-            self.chk_refresh_maps.isChecked() or self.chk_refresh_other.isChecked()
-        )
+        is_enabled = self.chk_refresh_maps.isChecked() or self.chk_refresh_other.isChecked()
         self.btn_refresh.setEnabled(is_enabled)
 
     def rename_layout(self):
