@@ -563,10 +563,10 @@ class LayoutPublisherDock(QDockWidget):
         each layout is exported as ``<layout name>.<pdf|png>``; existing
         files with the same name are overwritten.
 
-        The user can cancel in the progress dialog. The layout being exported
-        is finished first (the export can't be interrupted), and the remaining
-        layouts are marked as cancelled and skipped. A summary, including any
-        errors and cancelled layouts, is shown in the status line afterwards.
+        The user can stop the export in the progress dialog. The layout being
+        exported is finished first (the export can't be interrupted), and the
+        remaining layouts are skipped. A summary, including any errors and
+        skipped layouts, is shown in the status line afterwards.
         """
         export_dir = self.export_dir()
         if not export_dir:
@@ -585,7 +585,7 @@ class LayoutPublisherDock(QDockWidget):
         names = [i.text() for i in selected]
         manager = QgsProject.instance().layoutManager()
         n_ok = 0
-        n_cancelled = 0
+        n_skipped = 0
         errors = []
 
         dialog = PublishProgressDialog(names, fmt, export_dir, iface.mainWindow())
@@ -596,9 +596,9 @@ class LayoutPublisherDock(QDockWidget):
         QApplication.processEvents()
 
         for name in names:
-            if dialog.cancelled:
-                dialog.set_cancelled(name)
-                n_cancelled += 1
+            if dialog.stop_requested:
+                dialog.set_skipped(name)
+                n_skipped += 1
                 continue
 
             dialog.set_running(name)
@@ -628,13 +628,13 @@ class LayoutPublisherDock(QDockWidget):
             dialog.advance()
             QApplication.processEvents()
 
-        dialog.finish(n_ok, len(errors), n_cancelled)
+        dialog.finish(n_ok, len(errors), n_skipped)
 
         msg = f"Published {n_ok} layout(s) as {fmt} to {export_dir}."
         if errors:
             msg += "\nErrors: " + "; ".join(errors)
-        if n_cancelled:
-            msg += f"\n{n_cancelled} layouts cancelled."
+        if n_skipped:
+            msg += f"\n{n_skipped} layout(s) skipped."
         self.status.setText(msg)
 
     def export_layout(self, layout, path, fmt):
@@ -654,7 +654,6 @@ class LayoutPublisherDock(QDockWidget):
         exporter = QgsLayoutExporter(layout)
         if fmt == "PDF":
             return exporter.exportToPdf(path, QgsLayoutExporter.PdfExportSettings())
-        elif fmt == "PNG":
+        if fmt == "PNG":
             return exporter.exportToImage(path, QgsLayoutExporter.ImageExportSettings())
-        else:
-            raise ValueError(f"Unsupported format: {fmt}")
+        raise ValueError(f"Unsupported format: {fmt}")

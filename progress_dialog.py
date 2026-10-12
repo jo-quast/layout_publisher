@@ -24,11 +24,11 @@ class PublishProgressDialog(QDialog):
 
     Each row has a status mark: a grey dot while waiting, an amber ellipsis
     while exporting, a green check once exported, a red cross on failure, or
-    a grey dash if the export was cancelled before the layout's turn.
+    a grey dash if the layout was skipped because the export was stopped.
 
-    While an export is running, the Cancel button, Esc and the window's close
-    button (X) cancel it after the current layout instead of closing the
-    dialog. Once the export has finished, Cancel is replaced by Close.
+    While an export is running, the Stop button, Esc and the window's close
+    button (X) stop it after the current layout instead of closing the
+    dialog. Once the export has finished, Stop is replaced by Close.
     """
 
     def __init__(self, names, fmt, export_dir, parent=None):
@@ -47,7 +47,7 @@ class PublishProgressDialog(QDialog):
         self.setMinimumWidth(380)
         self._running = True
         self._rows = {}
-        self.cancelled = False  # set by request_cancel(); checked by the export loop
+        self.stop_requested = False  # set by request_stop(); checked by the export loop
 
         layout = QVBoxLayout(self)
 
@@ -87,13 +87,13 @@ class PublishProgressDialog(QDialog):
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
-        self.btn_cancel = QPushButton("Cancel")
-        self.btn_cancel.clicked.connect(self.request_cancel)
-        self.btn_cancel.setAutoDefault(False)
+        self.btn_stop = QPushButton("Stop")
+        self.btn_stop.clicked.connect(self.request_stop)
+        self.btn_stop.setAutoDefault(False)
         self.btn_close = QPushButton("Close")
         self.btn_close.setVisible(False)
         self.btn_close.clicked.connect(self.accept)
-        btn_row.addWidget(self.btn_cancel)
+        btn_row.addWidget(self.btn_stop)
         btn_row.addWidget(self.btn_close)
         layout.addLayout(btn_row)
 
@@ -124,56 +124,56 @@ class PublishProgressDialog(QDialog):
         """Mark a layout as failed (red cross), with the error as tooltip."""
         self._set_mark(name, "✗", COLOR_FAIL, message)
 
-    def set_cancelled(self, name):
-        """Mark a layout as not exported because of a cancel (grey dash), with a tooltip."""
-        self._set_mark(name, "–", COLOR_PENDING, "Cancelled by user")
+    def set_skipped(self, name):
+        """Mark a layout as skipped because the export was stopped (grey dash)."""
+        self._set_mark(name, "–", COLOR_PENDING, "Skipped (export stopped)")
 
     def advance(self):
         """Advance the progress bar by one finished layout."""
         self.progress.setValue(self.progress.value() + 1)
 
-    def finish(self, n_ok, n_failed, n_cancelled):
+    def finish(self, n_ok, n_failed, n_skipped):
         """Show the summary and allow the dialog to be closed.
 
-        Replaces the Cancel button with Close, which becomes the default
+        Replaces the Stop button with Close, which becomes the default
         button (activated by Enter).
 
         Args:
             n_ok (int): Number of layouts exported successfully.
             n_failed (int): Number of layouts that failed.
-            n_cancelled (int): Number of layouts skipped because the export
-                was cancelled.
+            n_skipped (int): Number of layouts skipped because the export
+                was stopped.
         """
         self._running = False
         text = f"Done: {n_ok} exported"
         if n_failed:
             text += f", {n_failed} failed (hover over ✗ for details)"
-        if n_cancelled:
-            text += f", {n_cancelled} cancelled"
+        if n_skipped:
+            text += f", {n_skipped} skipped"
         self.header.setText(text)
-        self.btn_cancel.setVisible(False)
+        self.btn_stop.setVisible(False)
         self.btn_close.setVisible(True)
         self.btn_close.setDefault(True)
 
-    def request_cancel(self):
+    def request_stop(self):
         """Ask the export to stop after the current layout.
 
-        Connected to the Cancel button, and called by ``reject()`` for Esc and
-        the window's close button. Sets ``cancelled``, which the export loop
+        Connected to the Stop button, and called by ``reject()`` for Esc and
+        the window's close button. Sets ``stop_requested``, which the export loop
         checks before each layout, and disables the button so it can't be
         clicked twice.
         """
-        self.cancelled = True
-        self.header.setText("Cancelling after the current layout…")
-        self.btn_cancel.setEnabled(False)
+        self.stop_requested = True
+        self.header.setText("Stopping after the current layout…")
+        self.btn_stop.setEnabled(False)
 
     def reject(self):
-        """Cancel the export while it is running, otherwise close the dialog.
+        """Stop the export while it is running, otherwise close the dialog.
 
         Qt calls this when the user presses Esc, and QDialog's closeEvent calls
         it when the window's close button (X) is clicked.
         """
         if self._running:
-            self.request_cancel()
+            self.request_stop()
         else:
             super().reject()

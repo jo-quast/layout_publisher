@@ -1,7 +1,7 @@
-"""Tests for cancelling an export in the publish progress dialog.
+"""Tests for stopping an export in the publish progress dialog.
 
 The panel's ``export_layout`` method is replaced with a fake (see ``fake_export`` below),
-so the tests run fast, write no files, and can "click" Cancel while a layout is being
+so the tests run fast, write no files, and can "click" Stop while a layout is being
 exported.
 """
 
@@ -27,18 +27,18 @@ def fake_export(panel, monkeypatch):
     """Return a function that replaces ``panel.export_layout`` with a fake export.
 
     A "factory fixture", like ``add_layout``: a test calls it before publishing, e.g.
-    ``exported = fake_export(cancel_during="A")``. The fake writes no files and reports
+    ``exported = fake_export(stop_during="A")``. The fake writes no files and reports
     every layout as exported successfully. monkeypatch restores the real method after
     the test.
     """
 
-    def _fake_export(cancel_during=None):
+    def _fake_export(stop_during=None):
         """Install the fake export on the panel.
 
         Args:
-            cancel_during (str, optional): Name of the layout during whose export
-                Cancel is clicked. That layout still counts as exported. None
-                (the default) never clicks Cancel.
+            stop_during (str, optional): Name of the layout during whose export
+                Stop is clicked. That layout still counts as exported. None
+                (the default) never clicks Stop.
 
         Returns:
             list[str]: The names of the layouts "exported", in order. It is
@@ -47,14 +47,14 @@ def fake_export(panel, monkeypatch):
         exported = []
 
         def export(layout, path, fmt):  # pylint: disable=unused-argument
-            """Stand-in for ``export_layout``: record the layout, maybe click Cancel.
+            """Stand-in for ``export_layout``: record the layout, maybe click Stop.
 
             It replaces the method on the panel object only, so it is called
             without ``self``; the other arguments are those of ``export_layout``.
             """
             exported.append(layout.name())
-            if layout.name() == cancel_during:
-                panel._publish_dialog.btn_cancel.click()  # pylint: disable=protected-access
+            if layout.name() == stop_during:
+                panel._publish_dialog.btn_stop.click()  # pylint: disable=protected-access
             return QgsLayoutExporter.ExportResult.Success
 
         monkeypatch.setattr(panel, "export_layout", export)
@@ -64,42 +64,42 @@ def fake_export(panel, monkeypatch):
 
 
 @pytest.mark.usefixtures("export_dir")  # the folder must be set, but isn't used directly
-def test_cancel_skips_remaining_layouts(panel, add_layout, fake_export):
-    """Clicking Cancel during the first export skips the other layouts."""
+def test_stop_skips_remaining_layouts(panel, add_layout, fake_export):
+    """Clicking Stop during the first export skips the other layouts."""
     for name in ("A", "B", "C"):
         add_layout(name)
     panel.list_widget.selectAll()
-    exported = fake_export(cancel_during="A")
+    exported = fake_export(stop_during="A")
 
     panel.publish_layouts()
 
-    assert exported == ["A"]  # the layout being exported when Cancel was clicked still finishes
-    assert "2 layouts cancelled" in panel.status.label.text()
+    assert exported == ["A"]  # the layout being exported when Stop was clicked still finishes
+    assert "2 layout(s) skipped" in panel.status.label.text()
 
 
 @pytest.mark.usefixtures("export_dir")  # the folder must be set, but isn't used directly
-def test_cancel_during_last_layout_skips_nothing(panel, add_layout, fake_export):
-    """Clicking Cancel during the last export doesn't skip any layouts."""
+def test_stop_during_last_layout_skips_nothing(panel, add_layout, fake_export):
+    """Clicking Stop during the last export doesn't skip any layouts."""
     for name in ("A", "B", "C"):
         add_layout(name)
     panel.list_widget.selectAll()
-    exported = fake_export(cancel_during="C")
+    exported = fake_export(stop_during="C")
 
     panel.publish_layouts()
 
     assert exported == ["A", "B", "C"]
-    assert "cancelled" not in panel.status.label.text()
+    assert "skipped" not in panel.status.label.text()
 
 
 @pytest.mark.usefixtures("export_dir")  # the folder must be set, but isn't used directly
-def test_not_cancelling_exports_all(panel, add_layout, fake_export):
-    """Not clicking Cancel exports all layouts."""
+def test_not_stopping_exports_all(panel, add_layout, fake_export):
+    """Not clicking Stop exports all layouts."""
     for name in ("A", "B", "C"):
         add_layout(name)
     panel.list_widget.selectAll()
-    exported = fake_export(cancel_during=None)
+    exported = fake_export(stop_during=None)
 
     panel.publish_layouts()
 
     assert exported == ["A", "B", "C"]
-    assert "cancelled" not in panel.status.label.text()
+    assert "skipped" not in panel.status.label.text()

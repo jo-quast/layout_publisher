@@ -18,7 +18,7 @@ changelog=1.1.0
     - Double-click a layout in the list to open it in the layout designer
     - Show a message in the panel when there are no layouts to list
     - Choose whether to refresh maps, other items (legends, labels, tables, ...) or both
-    - Cancel an export from the progress window
+    - Stop an export from the progress window
     1.0.0
     - Initial release
     - Dockable panel listing all print layouts of the project
