@@ -1,7 +1,8 @@
 """The Layout Publisher panel, docked in the QGIS main window.
 
-The panel lists all print layouts of the current QGIS project, has a button above the
-list to create a new layout, and offers two actions on the selected layouts:
+The panel lists all print layouts of the current QGIS project, has buttons above the
+list to create a new layout or duplicate the selected one, and offers two actions on
+the selected layouts:
 
 * **Refresh** - refresh the map items, the other items, or both.
 * **Publish** - export the layouts as PDF, PNG or SVG into a default export
@@ -13,7 +14,7 @@ across sessions and projects.
 
 import os
 
-from qgis.core import Qgis, QgsLayoutExporter, QgsProject, QgsSettings
+from qgis.core import Qgis, QgsApplication, QgsLayoutExporter, QgsProject, QgsSettings
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import (
     QApplication,
@@ -39,7 +40,13 @@ from .icons import new_layout_icon
 from .layout_list import LayoutList
 from .new_layout_dialog import NewLayoutDialog
 from .progress_dialog import PublishProgressDialog
-from .publisher import create_layout, export_layout, export_path, refresh_layout
+from .publisher import (
+    create_layout,
+    duplicate_layout,
+    export_layout,
+    export_path,
+    refresh_layout,
+)
 from .status_label import StatusLabel
 
 # Keys under which the export folder and format are stored in QgsSettings
@@ -51,6 +58,7 @@ LEVEL_CRITICAL = Qgis.MessageLevel.Critical
 # Status line texts; the {placeholders} are filled in with str.format()
 MSG_SELECT_LAYOUT = "Please select at least one layout."
 MSG_CREATED = "Created layout '{name}'."
+MSG_DUPLICATED = "Duplicated '{original}' as '{name}'."
 # Added on its own line below a refresh or publish summary if any layout failed
 MSG_ERRORS = "Errors: {errors}"
 # Entry in that error list for a layout that no longer exists
@@ -129,7 +137,7 @@ class LayoutPublisherPanel(QDockWidget):
     # ---------- building the panel ----------
 
     def _build_toolbar_row(self):
-        """Create the row of tool buttons above the layout list (so far only "New layout").
+        """Create the row of tool buttons above the layout list: New layout and Duplicate.
 
         Returns:
             QHBoxLayout: The row of buttons.
@@ -141,6 +149,16 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_new.setAutoRaise(True)  # flat until hovered, like the tool buttons of QGIS panels
         self.btn_new.clicked.connect(self.new_layout)
         row.addWidget(self.btn_new)
+
+        self.btn_duplicate = QToolButton()
+        self.btn_duplicate.setIcon(QgsApplication.getThemeIcon("mActionEditCopy.svg"))
+        self.btn_duplicate.setToolTip("Duplicate the selected layout (select exactly one)")
+        self.btn_duplicate.setAutoRaise(True)
+        # Only enabled when exactly one layout is selected; the selection row connects
+        # update_single_selection_buttons, because the list doesn't exist yet here
+        self.btn_duplicate.setEnabled(False)
+        self.btn_duplicate.clicked.connect(self.duplicate_selected_layout)
+        row.addWidget(self.btn_duplicate)
         row.addStretch()
         return row
 
@@ -165,7 +183,8 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_rename.setToolTip("Rename the selected layout (select exactly one)")
         self.btn_rename.setEnabled(False)  # only enabled when exactly one layout is selected
         self.btn_rename.clicked.connect(self.rename_layout)
-        list_widget.itemSelectionChanged.connect(self.update_rename_button)
+        # Also updates the Duplicate button above the list
+        list_widget.itemSelectionChanged.connect(self.update_single_selection_buttons)
         row.addStretch()
         row.addWidget(self.btn_rename)
         return row
@@ -258,19 +277,72 @@ class LayoutPublisherPanel(QDockWidget):
     def new_layout(self):
         """Ask for a name, then create an empty print layout and open it in the layout designer.
 
-        Uses the same dialog as QGIS's Layout Manager. If the name is left empty, a
-        unique one such as "Layout 1" is generated; names of existing layouts can't be
-        confirmed in the dialog. The new layout is selected in the list.
+        If the name is left empty, a unique one such as "Layout 1" is generated. The
+        new layout is selected in the list.
         """
-        dialog = NewLayoutDialog(self)
-        if dialog.exec() != QDialog.DialogCode.Accepted:
+        name = self._ask_layout_name()
+        if name is None:
             return  # cancelled
-        lyt = create_layout(QgsProject.instance(), dialog.name())
+        lyt = create_layout(QgsProject.instance(), name)
+        self._show_added_layout(lyt, MSG_CREATED.format(name=lyt.name()))
+
+    def duplicate_selected_layout(self):
+        """Ask for a name, then copy the selected layout and open the copy in the layout designer.
+
+        Exactly one layout must be selected. The copy has the same items and settings
+        as the original. The name is prefilled with "<original name> copy"; if it is
+        left empty, a unique one is generated. The copy is selected in the list.
+        """
+        selected = self.layout_list.selected_names()
+        if len(selected) != 1:
+            self.status.setText("Please select exactly one layout to duplicate.")
+            return
+
+        original_name = selected[0]
+        project = QgsProject.instance()
+        original = project.layoutManager().layoutByName(original_name)
+        if original is None:
+            self.show_error(f"Layout '{original_name}' not found.")
+            return
+
+        name = self._ask_layout_name(f"{original_name} copy")
+        if name is None:
+            return  # cancelled
+        lyt = duplicate_layout(project, original, name)
+        if lyt is None:
+            self.show_error(f"Layout '{original_name}' could not be duplicated.")
+            return
+        self._show_added_layout(lyt, MSG_DUPLICATED.format(original=original_name, name=lyt.name()))
+
+    def _ask_layout_name(self, name=""):
+        """Ask for the name of a new layout, with the same dialog as QGIS's Layout Manager.
+
+        Names of existing layouts can't be confirmed in the dialog.
+
+        Args:
+            name (str, optional): Name filled in when the dialog opens.
+
+        Returns:
+            str | None: The entered name, which may be empty (the caller then generates
+            one), or None if the dialog was cancelled.
+        """
+        dialog = NewLayoutDialog(self, name)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return None
+        return dialog.name()
+
+    def _show_added_layout(self, lyt, message):
+        """Select a newly added layout, report it and open it in the layout designer.
+
+        Args:
+            lyt (QgsPrintLayout): The layout that was just added to the project.
+            message (str): The message for the status line.
+        """
         # Make QGIS ask to save the project when closing
         QgsProject.instance().setDirty(True)
         # The manager's layoutAdded signal has already added it to the list
         self.layout_list.select_layout(lyt.name())
-        self.status.setText(MSG_CREATED.format(name=lyt.name()))
+        self.status.setText(message)
         iface.openLayoutDesigner(lyt)
 
     def open_layout(self, list_item):
@@ -300,9 +372,11 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_all.setEnabled(enabled)
         self.btn_none.setEnabled(enabled)
 
-    def update_rename_button(self):
-        """Enable the Rename button only when exactly one layout is selected."""
-        self.btn_rename.setEnabled(len(self.layout_list.selected_names()) == 1)
+    def update_single_selection_buttons(self):
+        """Enable the Rename and Duplicate buttons only when exactly one layout is selected."""
+        enabled = len(self.layout_list.selected_names()) == 1
+        self.btn_rename.setEnabled(enabled)
+        self.btn_duplicate.setEnabled(enabled)
 
     def update_refresh_button(self):
         """Enable the Refresh button only if an option is checked.

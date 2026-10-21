@@ -1,4 +1,6 @@
-"""Small helpers for reading the panel's state in tests."""
+"""Small helpers for reading the panel's and dialogs' state in tests."""
+
+from qgis.PyQt.QtWidgets import QDialogButtonBox
 
 
 def listed_layouts(panel):
@@ -14,3 +16,8 @@ def shown_message(panel):
     if panel.layout_list.empty_label.isHidden():
         return None
     return panel.layout_list.empty_label.text()
+
+
+def ok_button(dialog):
+    """Return the OK button of a ``NewLayoutDialog``."""
+    return dialog.buttonBox().button(QDialogButtonBox.StandardButton.Ok)

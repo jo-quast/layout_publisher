@@ -2,6 +2,7 @@
 
 It is set up like the dialog QGIS shows for Project > New Print Layout and for
 Create in the Layout Manager (``QgisApp::uniqueLayoutTitle`` in the QGIS source).
+The panel uses it both to create and to duplicate a layout.
 """
 
 from qgis.core import QgsProject, QgsStringUtils
@@ -40,14 +41,16 @@ class NewLayoutDialog(QgsNewNameDialog):
     name of an existing layout: OK is disabled and a warning shown while it is.
     """
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, name=""):
         """Set up the dialog for the current project's layouts.
 
         Args:
             parent (QWidget, optional): Parent widget.
+            name (str, optional): Name filled in when the dialog opens, e.g. a
+                suggestion for a copy. Empty by default.
         """
         existing = [lyt.name() for lyt in QgsProject.instance().layoutManager().layouts()]
-        super().__init__(LAYOUT_TYPE, "", [], existing, parent=parent)
+        super().__init__(LAYOUT_TYPE, name, [], existing, parent=parent)
         self.setWindowTitle(window_title())
         self.setHintString(HINT)
         self.setOverwriteEnabled(False)

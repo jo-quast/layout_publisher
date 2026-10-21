@@ -14,7 +14,9 @@ repository=https://github.com/jo-quast/layout_publisher
 tracker=https://github.com/jo-quast/layout_publisher/issues
 version=1.2.0
 changelog=1.2.0
-    - Create a new print layout with the button above the layout list
+    - A new layout toolbar above the layout list offers quick layout management options
+    - Create a new print layout with a button in the layout toolbar
+    - Duplicate a single selected layout with a button in the toolbar
     1.1.0
     - Rename the selected layout directly from the panel
     - Double-click a layout in the list to open it in the layout designer

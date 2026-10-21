@@ -47,6 +47,27 @@ def create_layout(project, name=""):
     return layout
 
 
+def duplicate_layout(project, layout, name=""):
+    """Copy a layout, with all its items and settings, and add the copy to the project.
+
+    Does what Duplicate in QGIS's Layout Manager does.
+
+    Args:
+        project (QgsProject): The project the layout belongs to; the copy is added to it.
+        layout (QgsPrintLayout): The layout to copy.
+        name (str, optional): The copy's name. If empty, a unique name such as
+            "Layout 1" is generated.
+
+    Returns:
+        QgsPrintLayout: The copy, now owned by the project's layout manager, or None
+        if QGIS couldn't copy the layout.
+    """
+    manager = project.layoutManager()
+    if not name:
+        name = manager.generateUniqueTitle(QgsMasterLayoutInterface.Type.PrintLayout)
+    return manager.duplicateLayout(layout, name)
+
+
 def refresh_layout(layout, maps, others):
     """Refresh the map items, the other items or both in a layout.
 

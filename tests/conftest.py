@@ -11,8 +11,11 @@ below. Fixtures can request other fixtures the same way.
 """
 
 import pytest
+from helpers import ok_button
+from layout_publisher.new_layout_dialog import NewLayoutDialog
 from layout_publisher.panel import LayoutPublisherPanel
 from qgis.core import QgsPrintLayout
+from qgis.PyQt.QtWidgets import QDialog, QLineEdit
 
 
 @pytest.fixture
@@ -71,3 +74,51 @@ def delete_layout():
         layout.project().layoutManager().removeLayout(layout)
 
     return _delete_layout
+
+
+@pytest.fixture
+def answer_dialog(monkeypatch):
+    """Return a function that decides how the next New layout dialog is answered.
+
+    The dialog's ``exec()`` would wait for a user, so it is replaced with a fake that
+    types a name and clicks OK or Cancel at once. A "factory fixture", like
+    ``add_layout``: e.g. ``answer_dialog("Site plan")`` types "Site plan" and clicks OK,
+    ``answer_dialog(None)`` clicks Cancel.
+
+    The function returns a list that gets the name each dialog showed when it opened
+    (before the fake typed anything), so a test can check a prefilled name.
+    """
+    prefilled = []
+
+    def _answer_dialog(name):
+        def fake_exec(dialog):
+            prefilled.append(dialog.findChild(QLineEdit).text())
+            if name is None:
+                return QDialog.DialogCode.Rejected
+            dialog.findChild(QLineEdit).setText(name)
+            # A user can't click OK while it is disabled (e.g. for an existing name)
+            if not ok_button(dialog).isEnabled():
+                return QDialog.DialogCode.Rejected
+            return QDialog.DialogCode.Accepted
+
+        monkeypatch.setattr(NewLayoutDialog, "exec", fake_exec)
+        return prefilled
+
+    return _answer_dialog
+
+
+@pytest.fixture
+def opened_layouts(monkeypatch):
+    """Return a list that gets the name of each layout opened in the layout designer.
+
+    The stub ``iface`` of pytest-qgis can't open a layout designer, so its
+    ``openLayoutDesigner`` is replaced with a function that only records the name.
+    """
+    opened = []
+    # raising=False: the stub iface has no openLayoutDesigner to replace, so add it
+    monkeypatch.setattr(
+        "layout_publisher.panel.iface.openLayoutDesigner",
+        lambda layout: opened.append(layout.name()),
+        raising=False,
+    )
+    return opened

@@ -1,7 +1,7 @@
 """The list of the project's print layouts at the top of the Layout Publisher panel."""
 
 from qgis.core import QgsProject
-from qgis.PyQt.QtCore import Qt, pyqtSignal
+from qgis.PyQt.QtCore import QItemSelectionModel, Qt, pyqtSignal
 from qgis.PyQt.QtWidgets import (
     QAbstractItemView,
     QLabel,
@@ -177,7 +177,9 @@ class LayoutList(QWidget):
         return [item.text() for item in self.list_widget.selectedItems()]
 
     def select_layout(self, name):
-        """Select and scroll to the entry with the given layout name.
+        """Select only the entry with the given layout name, and scroll to it.
+
+        Any other selected entries are deselected.
 
         Args:
             name (str): Name of the layout to select. Does nothing if no
@@ -186,6 +188,8 @@ class LayoutList(QWidget):
         for i in range(self.list_widget.count()):
             item = self.list_widget.item(i)
             if item.text() == name:
-                self.list_widget.setCurrentItem(item)
+                self.list_widget.setCurrentItem(
+                    item, QItemSelectionModel.SelectionFlag.ClearAndSelect
+                )
                 self.list_widget.scrollToItem(item)
                 break
