@@ -70,11 +70,12 @@ load as a plugin, and it would include all of those files.
 
 1. Open the panel with the Layout Publisher button in the toolbar, or via
    **Plugins → Layout Publisher**. Use the same button to hide it again.
-2. To create a layout, click the button above the list (a sheet with a green
-   plus), enter a name (or leave it empty for a generated one) and click
-   **OK**. The new, empty layout opens in the layout designer.
-   To copy a layout, select it and click the duplicate button next to it; the
-   name is prefilled with "*layout name* copy".
+2. To create a layout, click the New Print Layout button above the list (it
+   has the same icon as in QGIS), enter a name (or leave it empty for a
+   generated one) and click **OK**. The new, empty layout opens in the layout
+   designer.
+   To copy a layout, select it and click the Duplicate Layout button next to
+   it; the name is prefilled with "*layout name* copy".
    Double-click a layout in the list to open it in the layout designer.
    Select one or more layouts in the list (Ctrl/Cmd-click or Shift-click, or
    use **All**).

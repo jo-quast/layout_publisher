@@ -36,7 +36,6 @@ from qgis.PyQt.QtWidgets import (
 from qgis.utils import iface
 
 from .export_format import ExportFormat
-from .icons import new_layout_icon
 from .layout_list import LayoutList
 from .new_layout_dialog import NewLayoutDialog
 from .progress_dialog import PublishProgressDialog
@@ -146,14 +145,14 @@ class LayoutPublisherPanel(QDockWidget):
         """
         row = QHBoxLayout()
         self.btn_new = QToolButton()
-        self.btn_new.setIcon(new_layout_icon())
+        self.btn_new.setIcon(QgsApplication.getThemeIcon("mActionNewLayout.svg"))
         self.btn_new.setToolTip("Create a new print layout")
         self.btn_new.setAutoRaise(True)  # flat until hovered, like the tool buttons of QGIS panels
         self.btn_new.clicked.connect(self.new_layout)
         row.addWidget(self.btn_new)
 
         self.btn_duplicate = QToolButton()
-        self.btn_duplicate.setIcon(QgsApplication.getThemeIcon("mActionEditCopy.svg"))
+        self.btn_duplicate.setIcon(QgsApplication.getThemeIcon("mActionDuplicateLayout.svg"))
         self.btn_duplicate.setToolTip("Duplicate the selected layout (select exactly one)")
         self.btn_duplicate.setAutoRaise(True)
         # Only enabled when exactly one layout is selected; the selection row connects
