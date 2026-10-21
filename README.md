@@ -18,8 +18,9 @@ choice.
 - Multi-selection, plus **All** / **None** buttons
 - A message in place of the list when there are no layouts, or no project is
   open
-- Double-click a layout to open it in the layout designer
-- **New layout:** the button above the list creates an empty print layout (with
+- **Open:** open the selected layout in the layout designer with the first
+  button above the list, or double-click it
+- **New layout:** the button next to it creates an empty print layout (with
   the same dialog as QGIS's Layout Manager) and opens it in the layout designer
 - **Duplicate:** the button next to it copies the selected layout, with all its
   items, under a new name and opens the copy in the layout designer
@@ -70,13 +71,14 @@ load as a plugin, and it would include all of those files.
 
 1. Open the panel with the Layout Publisher button in the toolbar, or via
    **Plugins → Layout Publisher**. Use the same button to hide it again.
-2. To create a layout, click the New Print Layout button above the list (it
+2. To open a layout in the layout designer, double-click it in the list, or
+   select it and click the Open button, the first button above the list.
+   To create a layout, click the New Print Layout button above the list (it
    has the same icon as in QGIS), enter a name (or leave it empty for a
    generated one) and click **OK**. The new, empty layout opens in the layout
    designer.
    To copy a layout, select it and click the Duplicate Layout button next to
    it; the name is prefilled with "*layout name* copy".
-   Double-click a layout in the list to open it in the layout designer.
    Select one or more layouts in the list (Ctrl/Cmd-click or Shift-click, or
    use **All**).
 

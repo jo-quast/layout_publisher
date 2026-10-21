@@ -81,6 +81,8 @@ folder: it would pack `.git` and editor files. `*.zip` is gitignored.
 - `new_layout_dialog.py`: `NewLayoutDialog` (a `QgsNewNameDialog` set up like QGIS's own
   "Create Print Layout" dialog), used by both New layout and Duplicate (with a prefilled name)
   via the panel's `_ask_layout_name`. Tests replace its `exec` to answer it headlessly.
+- `icons/`: the plugin's own SVG icons, only for buttons without a matching QGIS theme icon
+  (`open_layout.svg`, loaded via `panel.ICONS_DIR`). Prefer `QgsApplication.getThemeIcon()`.
 - `export_format.py`: the `ExportFormat` enum (value = shown/saved name, `extension` property).
 - `progress_dialog.py`: `PublishProgressDialog`, one row per layout with a status mark.
 - `status_label.py`: `StatusLabel`, the status line with a clear button.

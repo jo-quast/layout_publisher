@@ -1,8 +1,8 @@
 """The Layout Publisher panel, docked in the QGIS main window.
 
 The panel lists all print layouts of the current QGIS project, has buttons above the
-list to create a new layout or duplicate the selected one, and offers two actions on
-the selected layouts:
+list to open the selected layout, create a new one or duplicate the selected one, and
+offers two actions on the selected layouts:
 
 * **Refresh** - refresh the map items, the other items, or both.
 * **Publish** - export the layouts as PDF, PNG or SVG into a default export
@@ -16,6 +16,7 @@ import os
 
 from qgis.core import Qgis, QgsApplication, QgsLayoutExporter, QgsProject, QgsSettings
 from qgis.PyQt.QtCore import Qt
+from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -47,6 +48,9 @@ from .publisher import (
     refresh_layout,
 )
 from .status_label import StatusLabel
+
+# The plugin's own icons, for buttons that have no matching QGIS theme icon
+ICONS_DIR = os.path.join(os.path.dirname(__file__), "icons")
 
 # Keys under which the export folder and format are stored in QgsSettings
 SETTINGS_DIR = "LayoutPublisher/export_dir"
@@ -120,7 +124,9 @@ class LayoutPublisherPanel(QDockWidget):
         layout.addLayout(self._build_toolbar_row())
         # The list must be built before the selection row, which connects to it
         self.layout_list = LayoutList()
-        self.layout_list.list_widget.itemDoubleClicked.connect(self.open_layout)
+        self.layout_list.list_widget.itemDoubleClicked.connect(
+            lambda item: self.open_layout(item.text())
+        )
         self.layout_list.setToolTip("Double-click a layout to open it in the layout designer")
         layout.addWidget(self.layout_list, 1)  # stretch: the list takes the free space
 
@@ -138,16 +144,30 @@ class LayoutPublisherPanel(QDockWidget):
     # ---------- building the panel ----------
 
     def _build_toolbar_row(self):
-        """Create the row of tool buttons above the layout list: New layout and Duplicate.
+        """Create the row of tool buttons above the layout list: Open, New layout and Duplicate.
+
+        Open and Duplicate are only enabled when exactly one layout is selected; the
+        selection row connects ``update_single_selection_buttons``, because the list
+        doesn't exist yet here.
 
         Returns:
             QHBoxLayout: The row of buttons.
         """
         row = QHBoxLayout()
+        self.btn_open = QToolButton()
+        self.btn_open.setIcon(QIcon(os.path.join(ICONS_DIR, "open_layout.svg")))
+        self.btn_open.setToolTip(
+            "Open the selected layout in the layout designer (select exactly one)"
+        )
+        self.btn_open.setAutoRaise(True)  # flat until hovered, like the tool buttons of QGIS panels
+        self.btn_open.setEnabled(False)
+        self.btn_open.clicked.connect(self.open_selected_layout)
+        row.addWidget(self.btn_open)
+
         self.btn_new = QToolButton()
         self.btn_new.setIcon(QgsApplication.getThemeIcon("mActionNewLayout.svg"))
         self.btn_new.setToolTip("Create a new print layout")
-        self.btn_new.setAutoRaise(True)  # flat until hovered, like the tool buttons of QGIS panels
+        self.btn_new.setAutoRaise(True)
         self.btn_new.clicked.connect(self.new_layout)
         row.addWidget(self.btn_new)
 
@@ -155,8 +175,6 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_duplicate.setIcon(QgsApplication.getThemeIcon("mActionDuplicateLayout.svg"))
         self.btn_duplicate.setToolTip("Duplicate the selected layout (select exactly one)")
         self.btn_duplicate.setAutoRaise(True)
-        # Only enabled when exactly one layout is selected; the selection row connects
-        # update_single_selection_buttons, because the list doesn't exist yet here
         self.btn_duplicate.setEnabled(False)
         self.btn_duplicate.clicked.connect(self.duplicate_selected_layout)
         row.addWidget(self.btn_duplicate)
@@ -184,7 +202,7 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_rename.setToolTip("Rename the selected layout (select exactly one)")
         self.btn_rename.setEnabled(False)  # only enabled when exactly one layout is selected
         self.btn_rename.clicked.connect(self.rename_layout)
-        # Also updates the Duplicate button above the list
+        # Also updates the Open and Duplicate buttons above the list
         list_widget.itemSelectionChanged.connect(self.update_single_selection_buttons)
         row.addStretch()
         row.addWidget(self.btn_rename)
@@ -346,17 +364,27 @@ class LayoutPublisherPanel(QDockWidget):
         self.status.setText(message)
         iface.openLayoutDesigner(lyt)
 
-    def open_layout(self, list_item):
-        """Open the layout of ``list_item`` in the layout designer.
+    def open_selected_layout(self):
+        """Open the selected layout in the layout designer.
 
-        Connected to a double-click in the layout list. If the layout is
-        already open, QGIS brings its designer window to the front instead of
+        Connected to the Open button; exactly one layout must be selected.
+        """
+        selected = self.layout_list.selected_names()
+        if len(selected) != 1:
+            self.status.setText("Please select exactly one layout to open.")
+            return
+        self.open_layout(selected[0])
+
+    def open_layout(self, name):
+        """Open the layout with the given name in the layout designer.
+
+        Used by the Open button and a double-click in the layout list. If the layout
+        is already open, QGIS brings its designer window to the front instead of
         opening a second one.
 
         Args:
-            list_item (QListWidgetItem): The item that was double-clicked.
+            name (str): Name of the layout to open.
         """
-        name = list_item.text()
         lyt = QgsProject.instance().layoutManager().layoutByName(name)
         if lyt is None:
             self.show_error(f"Layout '{name}' not found.")
@@ -374,8 +402,9 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_none.setEnabled(enabled)
 
     def update_single_selection_buttons(self):
-        """Enable the Rename and Duplicate buttons only when exactly one layout is selected."""
+        """Enable Open, Duplicate and Rename only when exactly one layout is selected."""
         enabled = len(self.layout_list.selected_names()) == 1
+        self.btn_open.setEnabled(enabled)
         self.btn_rename.setEnabled(enabled)
         self.btn_duplicate.setEnabled(enabled)
 
