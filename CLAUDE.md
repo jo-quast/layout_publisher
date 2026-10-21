@@ -75,8 +75,12 @@ folder: it would pack `.git` and editor files. `*.zip` is gitignored.
     decides which one (QGIS always has a project, so "in use" = has a file name or is dirty).
   - List items hold only the layout **name** (`selected_names()`); actions look layouts up again
     via `layoutManager().layoutByName()` and must handle `None`.
-- `publisher.py`: work on one layout without UI: `refresh_layout`, `export_path`, `export_layout`.
+- `publisher.py`: work on one layout without UI: `create_layout`, `refresh_layout`, `export_path`,
+  `export_layout`.
   Tests that fake the export patch `layout_publisher.panel.export_layout` (where it's used).
+- `new_layout_dialog.py`: `NewLayoutDialog` (a `QgsNewNameDialog` set up like QGIS's own
+  "Create Print Layout" dialog). Tests replace its `exec` to answer it headlessly.
+- `icons.py`: composite icons painted from QGIS theme icons (`badged_icon`, `new_layout_icon`).
 - `export_format.py`: the `ExportFormat` enum (value = shown/saved name, `extension` property).
 - `progress_dialog.py`: `PublishProgressDialog`, one row per layout with a status mark.
 - `status_label.py`: `StatusLabel`, the status line with a clear button.

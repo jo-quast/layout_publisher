@@ -1,7 +1,7 @@
 """The Layout Publisher panel, docked in the QGIS main window.
 
-The panel lists all print layouts of the current QGIS project and offers two
-actions on the selected layouts:
+The panel lists all print layouts of the current QGIS project, has a button above the
+list to create a new layout, and offers two actions on the selected layouts:
 
 * **Refresh** - refresh the map items, the other items, or both.
 * **Publish** - export the layouts as PDF, PNG or SVG into a default export
@@ -19,6 +19,7 @@ from qgis.PyQt.QtWidgets import (
     QApplication,
     QCheckBox,
     QComboBox,
+    QDialog,
     QDockWidget,
     QFileDialog,
     QGroupBox,
@@ -27,15 +28,18 @@ from qgis.PyQt.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 from qgis.utils import iface
 
 from .export_format import ExportFormat
+from .icons import new_layout_icon
 from .layout_list import LayoutList
+from .new_layout_dialog import NewLayoutDialog
 from .progress_dialog import PublishProgressDialog
-from .publisher import export_layout, export_path, refresh_layout
+from .publisher import create_layout, export_layout, export_path, refresh_layout
 from .status_label import StatusLabel
 
 # Keys under which the export folder and format are stored in QgsSettings
@@ -46,6 +50,7 @@ LEVEL_CRITICAL = Qgis.MessageLevel.Critical
 
 # Status line texts; the {placeholders} are filled in with str.format()
 MSG_SELECT_LAYOUT = "Please select at least one layout."
+MSG_CREATED = "Created layout '{name}'."
 # Added on its own line below a refresh or publish summary if any layout failed
 MSG_ERRORS = "Errors: {errors}"
 # Entry in that error list for a layout that no longer exists
@@ -84,8 +89,8 @@ def make_group(title):
 class LayoutPublisherPanel(QDockWidget):
     """Dockable panel to refresh and publish the project's print layouts.
 
-    The panel puts together the layout list (``LayoutList``), the Refresh and Publish
-    groups and the status line, and carries out the actions on the selected layouts.
+    The panel puts together the toolbar row, the layout list (``LayoutList``), the Refresh
+    and Publish groups and the status line, and carries out the actions on the layouts.
     """
 
     def __init__(self, parent=None):
@@ -105,7 +110,8 @@ class LayoutPublisherPanel(QDockWidget):
 
         body = QWidget()
         layout = QVBoxLayout(body)
-        # The list must be built first: the selection row connects to it
+        layout.addLayout(self._build_toolbar_row())
+        # The list must be built before the selection row, which connects to it
         self.layout_list = LayoutList()
         self.layout_list.list_widget.itemDoubleClicked.connect(self.open_layout)
         layout.addWidget(self.layout_list, 1)  # stretch: the list takes the free space
@@ -121,6 +127,22 @@ class LayoutPublisherPanel(QDockWidget):
         self.update_refresh_button()
 
     # ---------- building the panel ----------
+
+    def _build_toolbar_row(self):
+        """Create the row of tool buttons above the layout list (so far only "New layout").
+
+        Returns:
+            QHBoxLayout: The row of buttons.
+        """
+        row = QHBoxLayout()
+        self.btn_new = QToolButton()
+        self.btn_new.setIcon(new_layout_icon())
+        self.btn_new.setToolTip("Create a new print layout")
+        self.btn_new.setAutoRaise(True)  # flat until hovered, like the tool buttons of QGIS panels
+        self.btn_new.clicked.connect(self.new_layout)
+        row.addWidget(self.btn_new)
+        row.addStretch()
+        return row
 
     def _build_selection_row(self):
         """Create the All / None / Rename buttons below the layout list.
@@ -232,6 +254,24 @@ class LayoutPublisherPanel(QDockWidget):
         self.layout_list.disconnect_signals()
 
     # ---------- layout actions ----------
+
+    def new_layout(self):
+        """Ask for a name, then create an empty print layout and open it in the layout designer.
+
+        Uses the same dialog as QGIS's Layout Manager. If the name is left empty, a
+        unique one such as "Layout 1" is generated; names of existing layouts can't be
+        confirmed in the dialog. The new layout is selected in the list.
+        """
+        dialog = NewLayoutDialog(self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return  # cancelled
+        lyt = create_layout(QgsProject.instance(), dialog.name())
+        # Make QGIS ask to save the project when closing
+        QgsProject.instance().setDirty(True)
+        # The manager's layoutAdded signal has already added it to the list
+        self.layout_list.select_layout(lyt.name())
+        self.status.setText(MSG_CREATED.format(name=lyt.name()))
+        iface.openLayoutDesigner(lyt)
 
     def open_layout(self, list_item):
         """Open the layout of ``list_item`` in the layout designer.

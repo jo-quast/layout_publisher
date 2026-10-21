@@ -19,6 +19,8 @@ choice.
 - A message in place of the list when there are no layouts, or no project is
   open
 - Double-click a layout to open it in the layout designer
+- **New layout:** the button above the list creates an empty print layout (with
+  the same dialog as QGIS's Layout Manager) and opens it in the layout designer
 - **Rename:** change the name of the selected layout directly from the panel
 - **Refresh:** refresh the map items, the other items (legends, labels, scale
   bars, tables, ...) or both in the selected layouts
@@ -66,7 +68,10 @@ load as a plugin, and it would include all of those files.
 
 1. Open the panel with the Layout Publisher button in the toolbar, or via
    **Plugins → Layout Publisher**. Use the same button to hide it again.
-2. Double-click a layout in the list to open it in the layout designer.
+2. To create a layout, click the button above the list (a sheet with a green
+   plus), enter a name (or leave it empty for a generated one) and click
+   **OK**. The new, empty layout opens in the layout designer.
+   Double-click a layout in the list to open it in the layout designer.
    Select one or more layouts in the list (Ctrl/Cmd-click or Shift-click, or
    use **All**).
 

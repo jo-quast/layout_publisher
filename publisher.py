@@ -1,4 +1,4 @@
-"""Refreshing and exporting single layouts, without any user interface.
+"""Creating, refreshing and exporting single layouts, without any user interface.
 
 The panel decides which layouts to process and reports the results; the functions
 here do the work for one layout at a time. They can be tested without creating
@@ -14,12 +14,37 @@ from qgis.core import (
     QgsLayoutItem,
     QgsLayoutItemMap,
     QgsLayoutItemPage,
+    QgsMasterLayoutInterface,
+    QgsPrintLayout,
 )
 
 from .export_format import ExportFormat
 
 # Characters that are not allowed in file names on Windows (the strictest system)
 UNSAFE_FILENAME_CHARS = r'[\\/:*?"<>|]'
+
+
+def create_layout(project, name=""):
+    """Create an empty print layout with one page (A4 landscape) and add it to the project.
+
+    Does what QGIS does for Project > New Print Layout.
+
+    Args:
+        project (QgsProject): The project to add the layout to.
+        name (str, optional): The layout's name. If empty, a unique name such as
+            "Layout 1" is generated.
+
+    Returns:
+        QgsPrintLayout: The new layout, now owned by the project's layout manager.
+    """
+    manager = project.layoutManager()
+    if not name:
+        name = manager.generateUniqueTitle(QgsMasterLayoutInterface.Type.PrintLayout)
+    layout = QgsPrintLayout(project)
+    layout.initializeDefaults()  # adds the default page
+    layout.setName(name)
+    manager.addLayout(layout)
+    return layout
 
 
 def refresh_layout(layout, maps, others):
