@@ -1,8 +1,8 @@
 """The Layout Publisher panel, docked in the QGIS main window.
 
 The panel lists all print layouts of the current QGIS project, has buttons above the
-list to open the selected layout, create a new one or duplicate the selected one, and
-offers two actions on the selected layouts:
+list to open the selected layout, create a new one, duplicate the selected one or delete
+the selected ones, and offers two actions on the selected layouts:
 
 * **Refresh** - refresh the map items, the other items, or both.
 * **Publish** - export the layouts as PDF, PNG or SVG into a default export
@@ -29,6 +29,7 @@ from qgis.PyQt.QtWidgets import (
     QInputDialog,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QToolButton,
     QVBoxLayout,
@@ -62,6 +63,7 @@ LEVEL_CRITICAL = Qgis.MessageLevel.Critical
 MSG_SELECT_LAYOUT = "Please select at least one layout."
 MSG_CREATED = "Created layout '{name}'."
 MSG_DUPLICATED = "Duplicated '{original}' as '{name}'."
+MSG_DELETED = "Deleted {n_deleted} layout(s)."
 # Added on its own line below a refresh or publish summary if any layout failed
 MSG_ERRORS = "Errors: {errors}"
 # Entry in that error list for a layout that no longer exists
@@ -81,6 +83,15 @@ MSG_PUBLISH_SKIPPED = "{n_skipped} layout(s) skipped."
 ERROR_EXPORT_FAILED = "'{name}': export failed"
 TOOLTIP_NOT_FOUND = "Layout not found"
 TOOLTIP_EXPORT_FAILED = "Export failed"
+
+# The dialog asking to confirm deleting layouts; {names} is one "• name" line per layout.
+# It lists at most MAX_LISTED_NAMES names, then a line saying how many more there are.
+TITLE_CONFIRM_DELETE = "Delete Layouts"
+MSG_CONFIRM_DELETE = (
+    "Do you really want to delete the following layout(s)?\n\n{names}\n\nThis cannot be undone."
+)
+MSG_MORE_LAYOUTS = "…and {n_more} other layout(s)."
+MAX_LISTED_NAMES = 15
 
 
 def make_group(title):
@@ -144,10 +155,10 @@ class LayoutPublisherPanel(QDockWidget):
     # ---------- building the panel ----------
 
     def _build_toolbar_row(self):
-        """Create the row of tool buttons above the layout list: Open, New layout and Duplicate.
+        """Create the row of tool buttons above the layout list: Open, New, Duplicate and Delete.
 
-        Open and Duplicate are only enabled when exactly one layout is selected; the
-        selection row connects ``update_single_selection_buttons``, because the list
+        Open, Duplicate and Delete depend on the selection and start disabled; the
+        selection row connects ``update_selected_layout_buttons``, because the list
         doesn't exist yet here.
 
         Returns:
@@ -178,6 +189,14 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_duplicate.setEnabled(False)
         self.btn_duplicate.clicked.connect(self.duplicate_selected_layout)
         row.addWidget(self.btn_duplicate)
+
+        self.btn_delete = QToolButton()
+        self.btn_delete.setIcon(QIcon(os.path.join(ICONS_DIR, "delete_layout.svg")))
+        self.btn_delete.setToolTip("Delete the selected layouts")
+        self.btn_delete.setAutoRaise(True)
+        self.btn_delete.setEnabled(False)
+        self.btn_delete.clicked.connect(self.delete_selected_layouts)
+        row.addWidget(self.btn_delete)
         row.addStretch()
         return row
 
@@ -202,8 +221,8 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_rename.setToolTip("Rename the selected layout (select exactly one)")
         self.btn_rename.setEnabled(False)  # only enabled when exactly one layout is selected
         self.btn_rename.clicked.connect(self.rename_layout)
-        # Also updates the Open and Duplicate buttons above the list
-        list_widget.itemSelectionChanged.connect(self.update_single_selection_buttons)
+        # Also updates the Open, Duplicate and Delete buttons above the list
+        list_widget.itemSelectionChanged.connect(self.update_selected_layout_buttons)
         row.addStretch()
         row.addWidget(self.btn_rename)
         return row
@@ -391,6 +410,64 @@ class LayoutPublisherPanel(QDockWidget):
             return
         iface.openLayoutDesigner(lyt)
 
+    def delete_selected_layouts(self):
+        """Delete the selected layouts from the project, after the user confirms.
+
+        A dialog lists the layouts to delete; nothing is deleted unless the user
+        clicks Yes. QGIS closes the layout designer of a deleted layout itself.
+        """
+        names = self.layout_list.selected_names()
+        if not names:
+            self.status.setText(MSG_SELECT_LAYOUT)
+            return
+        if not self._confirm_delete(names):
+            return  # cancelled
+
+        manager = QgsProject.instance().layoutManager()
+        n_deleted = 0
+        errors = []
+        for name in names:
+            lyt = manager.layoutByName(name)
+            if lyt is None:
+                errors.append(ERROR_NOT_FOUND.format(name=name))
+                continue
+            # The manager's layoutRemoved signal removes it from the list
+            manager.removeLayout(lyt)
+            n_deleted += 1
+        if n_deleted:
+            # Make QGIS ask to save the project when closing
+            QgsProject.instance().setDirty(True)
+
+        msg = MSG_DELETED.format(n_deleted=n_deleted)
+        if errors:
+            msg += "\n" + MSG_ERRORS.format(errors="; ".join(errors))
+        self.status.setText(msg)
+
+    def _confirm_delete(self, names):
+        """Ask whether to delete the given layouts, listing their names.
+
+        At most ``MAX_LISTED_NAMES`` names are listed, so the dialog stays small; the
+        rest are counted in a last line.
+
+        Args:
+            names (list[str]): Names of the layouts to delete.
+
+        Returns:
+            bool: True if the user clicked Yes.
+        """
+        lines = [f"• {name}" for name in names[:MAX_LISTED_NAMES]]
+        n_more = len(names) - MAX_LISTED_NAMES
+        if n_more > 0:
+            lines.append(MSG_MORE_LAYOUTS.format(n_more=n_more))
+        answer = QMessageBox.question(
+            self,
+            TITLE_CONFIRM_DELETE,
+            MSG_CONFIRM_DELETE.format(names="\n".join(lines)),
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,  # the default button, so Enter doesn't delete
+        )
+        return answer == QMessageBox.StandardButton.Yes
+
     def update_selection_buttons(self):
         """Enable the All / None buttons only when the layout list isn't empty.
 
@@ -401,12 +478,16 @@ class LayoutPublisherPanel(QDockWidget):
         self.btn_all.setEnabled(enabled)
         self.btn_none.setEnabled(enabled)
 
-    def update_single_selection_buttons(self):
-        """Enable Open, Duplicate and Rename only when exactly one layout is selected."""
-        enabled = len(self.layout_list.selected_names()) == 1
-        self.btn_open.setEnabled(enabled)
-        self.btn_rename.setEnabled(enabled)
-        self.btn_duplicate.setEnabled(enabled)
+    def update_selected_layout_buttons(self):
+        """Enable the buttons that act on the selected layouts, depending on the selection.
+
+        Open, Duplicate and Rename need exactly one selected layout, Delete at least one.
+        """
+        n_selected = len(self.layout_list.selected_names())
+        self.btn_open.setEnabled(n_selected == 1)
+        self.btn_duplicate.setEnabled(n_selected == 1)
+        self.btn_rename.setEnabled(n_selected == 1)
+        self.btn_delete.setEnabled(n_selected > 0)
 
     def update_refresh_button(self):
         """Enable the Refresh button only if an option is checked.

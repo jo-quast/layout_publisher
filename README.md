@@ -24,6 +24,8 @@ choice.
   the same dialog as QGIS's Layout Manager) and opens it in the layout designer
 - **Duplicate:** the button next to it copies the selected layout, with all its
   items, under a new name and opens the copy in the layout designer
+- **Delete:** the last button deletes the selected layouts, after a
+  confirmation that lists them
 - **Rename:** change the name of the selected layout directly from the panel
 - **Refresh:** refresh the map items, the other items (legends, labels, scale
   bars, tables, ...) or both in the selected layouts
@@ -79,6 +81,8 @@ load as a plugin, and it would include all of those files.
    designer.
    To copy a layout, select it and click the Duplicate Layout button next to
    it; the name is prefilled with "*layout name* copy".
+   To delete layouts, select them and click the Delete button, the last button
+   above the list, then confirm with **Yes**.
    Select one or more layouts in the list (Ctrl/Cmd-click or Shift-click, or
    use **All**).
 

@@ -18,6 +18,7 @@ changelog=1.2.0
     - Open a single selected layout with a button in the layout toolbar
     - Create a new print layout with a button in the layout toolbar
     - Duplicate a single selected layout with a button in the toolbar
+    - Delete the selected layouts with a button in the toolbar, after a confirmation
     1.1.0
     - Rename the selected layout directly from the panel
     - Double-click a layout in the list to open it in the layout designer
