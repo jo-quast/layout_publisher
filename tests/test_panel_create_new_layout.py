@@ -62,9 +62,6 @@ def test_new_layout_existing_name_not_accepted(
     assert opened_layouts == []
 
 
-# ---------- publisher.create_layout ----------
-
-
 def test_create_layout_numbers_generated_names(project):
     """Without a name, each new layout gets the next free generated name."""
     first = create_layout(project)

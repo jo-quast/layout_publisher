@@ -122,7 +122,9 @@ class LayoutPublisherPanel(QDockWidget):
         # The list must be built before the selection row, which connects to it
         self.layout_list = LayoutList()
         self.layout_list.list_widget.itemDoubleClicked.connect(self.open_layout)
+        self.layout_list.setToolTip("Double-click a layout to open it in the layout designer")
         layout.addWidget(self.layout_list, 1)  # stretch: the list takes the free space
+
         layout.addLayout(self._build_selection_row())
         layout.addWidget(self._build_refresh_group())
         layout.addWidget(self._build_publish_group())

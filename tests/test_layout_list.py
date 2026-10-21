@@ -12,10 +12,9 @@ from layout_publisher.layout_list import MSG_NO_LAYOUTS, MSG_NO_PROJECT
 
 
 def test_untouched_project_asks_to_open_a_project(panel):
-    """Right after QGIS starts, the panel asks to open a project and hides the list and hint."""
+    """Right after QGIS starts, the panel asks to open a project and hides the list."""
     assert shown_message(panel) == MSG_NO_PROJECT
     assert listed_layouts(panel) is None
-    assert panel.layout_list.hint_label.isHidden()
 
 
 def test_unsaved_project_with_changes_counts_as_in_use(panel, project, add_layout):
@@ -66,7 +65,6 @@ def test_existing_layouts_are_shown_instead_of_message(panel, add_layout):
 
     assert listed_layouts(panel) == ["a plan"]
     assert shown_message(panel) is None
-    assert not panel.layout_list.hint_label.isHidden()
 
 
 def test_deleting_last_layout_asks_to_add_layout(panel, add_layout, delete_layout):
@@ -86,7 +84,6 @@ def test_layouts_are_listed_alphabetically(panel, add_layout):
     add_layout("A plan")
 
     assert listed_layouts(panel) == ["A plan", "b plan"]
-    assert not panel.layout_list.hint_label.isHidden()
 
 
 def test_renamed_layout_is_updated_in_list(panel, add_layout):

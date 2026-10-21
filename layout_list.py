@@ -35,7 +35,7 @@ def project_in_use(qgs_project):
 
 
 class LayoutList(QWidget):
-    """A hint, the list of the project's layouts, and a message shown instead if there are none.
+    """The list of the project's layouts, and a message shown instead if there are none.
 
     The list stays in sync with the project: it is refreshed whenever layouts are
     added, removed or renamed, or another project is opened. It holds only the
@@ -57,14 +57,9 @@ class LayoutList(QWidget):
         box_layout = QVBoxLayout(self)
         box_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.hint_label = QLabel("Select layouts (double-click to open layout designer):")
-        self.hint_label.setWordWrap(True)
-        box_layout.addWidget(self.hint_label)
-
         # Multi-selection list; shared by the Refresh and Publish actions
         self.list_widget = QListWidget()
         self.list_widget.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.list_widget.setToolTip("Double-click a layout to open it in the layout designer")
         box_layout.addWidget(self.list_widget)
 
         # Shown instead of the list when there are no layouts to list
@@ -164,7 +159,6 @@ class LayoutList(QWidget):
         self.empty_label.setText(text)
         self.empty_label.setVisible(bool(text))
         self.list_widget.setVisible(not text)
-        self.hint_label.setVisible(not text)
 
     # ---------- selection ----------
 
